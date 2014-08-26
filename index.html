@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - performance</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				background:#fff;
+				padding:0;
+				margin:0;
+				font-weight: bold;
+				overflow:hidden;
+			}
+		</style>
+	</head>
+	<body>
+
+		<script src="/~sijietian/pbr/threejs/build/three.js"></script>
+		<script src="/~sijietian/pbr/threejs/controls/OrbitControls.js"></script>
+
+		<script id="vertexShader" type="x-shader/x-vertex">
+
+			precision mediump float;
+			precision mediump int;
+
+	//		uniform mat4 modelViewMatrix; // optional
+	//		uniform mat4 projectionMatrix; // optional
+
+			varying vec3 vPosition;
+			varying vec4 vColor;
+
+			void main()	{
+
+				vPosition = position;
+				vColor = vec4(0.3, 0.5, 0.6, 0.6);
+
+				gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+
+			}
+
+		</script>
+
+		<script id="fragmentShader" type="x-shader/x-fragment">
+
+			precision mediump float;
+			precision mediump int;
+
+			uniform float time;
+
+			varying vec3 vPosition;
+			varying vec4 vColor;
+
+			void main()	{
+
+				vec4 color = vec4( vColor );
+				color.r += sin( vPosition.x * 10.0 + time ) * 0.5;
+				//vec4 color = vec4(0.2, 0.5, 0.8, 1.0);
+				gl_FragColor = color;
+
+			}
+
+		</script>
+
+
+		<script>
+
+			var container, stats;
+
+			var camera, scene, renderer;
+
+			var objects, controller;
+
+			var mouseX = 0, mouseY = 0;
+
+			var windowHalfX = window.innerWidth / 2;
+			var windowHalfY = window.innerHeight / 2;
+
+			var time;
+
+			//document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+
+			init();
+			animate();
+
+
+			function init() {
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 100 );
+				camera.position.z = 2;
+				camera.position.x = 1;
+
+				controller = new THREE.OrbitControls(camera);
+
+				scene = new THREE.Scene();
+
+				var boxGeo = new THREE.BoxGeometry(1,1,1);
+
+				var material = new THREE.ShaderMaterial( {
+
+					uniforms: {
+						time: { type: "f", value: 1.0 }
+					},
+					vertexShader: document.getElementById( 'vertexShader' ).textContent,
+					fragmentShader: document.getElementById( 'fragmentShader' ).textContent,
+					side: THREE.DoubleSide,
+					transparent: true
+
+				} );
+
+
+				var boxMaterial = new THREE.MeshNormalMaterial( {color:new THREE.Color('rgb(1,0.4,1)'), shading: THREE.SmoothShading } );
+				var boxMesh = new THREE.Mesh(boxGeo, boxMaterial);
+				//scene.add(boxMesh);
+
+				var mesh = new THREE.Mesh(boxGeo, material);
+				scene.add(mesh);
+
+				renderer = new THREE.WebGLRenderer();
+				renderer.setClearColor( 0xffffff, 1 );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				container.appendChild( renderer.domElement );
+
+				// stats = new Stats();
+				// stats.domElement.style.position = 'absolute';
+				// stats.domElement.style.top = '0px';
+				// stats.domElement.style.zIndex = 100;
+				// container.appendChild( stats.domElement );
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+			}
+
+			function onWindowResize() {
+
+				windowHalfX = window.innerWidth / 2;
+				windowHalfY = window.innerHeight / 2;
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			function onDocumentMouseMove(event) {
+
+				mouseX = ( event.clientX - windowHalfX ) * 10;
+				mouseY = ( event.clientY - windowHalfY ) * 10;
+
+			}
+
+			//
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+
+				render();
+				//stats.update();
+
+			}
+
+			function render() {
+
+				var time = performance.now();
+
+				renderer.render( scene, camera );
+
+				var object = scene.children[ 0 ];
+
+		//		object.rotation.y = time * 0.0005;
+				object.material.uniforms.time.value = time * 0.005;
+
+			}
+
+		</script>
+
+	</body>
+</html>
