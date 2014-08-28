@@ -18,6 +18,7 @@
 
 		<script src="/~sijietian/pbr/threejs/build/three.js"></script>
 		<script src="/~sijietian/pbr/threejs/controls/OrbitControls.js"></script>
+		<script type="text/javascript" src="/~sijietian/pbr/dat.gui.min.js"></script>
 
 		<script id="vertexShader" type="x-shader/x-vertex">
 
@@ -149,6 +150,10 @@
 
 			var time;
 
+			var property;
+
+			var material;
+
 			//document.addEventListener( 'mousemove', onDocumentMouseMove, false );
 
 			init();
@@ -156,6 +161,8 @@
 
 
 			function init() {
+
+				property = new property();
 
 				container = document.createElement( 'div' );
 				document.body.appendChild( container );
@@ -174,7 +181,7 @@
 
 				var boxGeo = new THREE.BoxGeometry(1,1,1);
 
-				var material = new THREE.ShaderMaterial( {
+				material = new THREE.ShaderMaterial( {
 
 					uniforms: {
 						u_lightColor: { type: "v3", value: new THREE.Vector3(light.color.r, light.color.g, light.color.b)  },
@@ -182,8 +189,8 @@
 						u_lightPos: { type: "v3", value: light.position},
 						u_viewPos: {type: "v3", value: camera.position },
 						u_diffuseColor: {type: "v3", value: new THREE.Vector3(0.0, 0.66, 0.42)},
-						u_roughness: {type: "f", value: 0.23 },
-						u_fresnel: {type: "f", value: 98.5 },
+						u_roughness: {type: "f", value: property.roughness },
+						u_fresnel: {type: "f", value: property.fresnel },
 					},
 					vertexShader: document.getElementById( 'vertexShader' ).textContent,
 					fragmentShader: document.getElementById( 'fragmentShader' ).textContent,
@@ -253,6 +260,8 @@
 
 				render();
 				//stats.update();
+				material.uniforms['u_roughness'].value = property.roughness;
+				material.uniforms['u_fresnel'].value = property.fresnel;
 
 			}
 
@@ -260,6 +269,18 @@
 
 				renderer.render( scene, camera );
 
+			}
+
+			function property() {
+				this.roughness = 0.1;
+				this.fresnel = 1.0;
+			}
+
+			window.onload = function() {
+
+				var datGui = new dat.GUI();
+			  datGui.add(property, 'roughness', 0.01, 1.0);
+			  datGui.add(property, 'fresnel', 1.0, 20.0);
 			}
 
 		</script>
