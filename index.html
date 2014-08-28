@@ -13,6 +13,7 @@
 				overflow:hidden;
 			}
 		</style>
+		<div id="container" style="width:100%; height: 100%;"></div>
 	</head>
 	<body>
 
@@ -62,6 +63,10 @@
 
 			#define M_PI 3.1415926535897932384626433832795
 
+			float dotClamped(vec3 a, vec3 b) {
+				return max(dot(a,b), 0.0);
+			}
+
 			float F(float f0, vec3 l, vec3 h) {
 				return f0 + (1.0-f0) * pow(1.0-dot(l,h),5.0);
 			}
@@ -95,6 +100,53 @@
 				return min(1.0, min((2.0 * NdotH * NdotVClamped) / VdotH, (2.0 * NdotH * NdotLClamped) / VdotH));
 			}
 
+			float GKelemen(vec3 l, vec3 v, vec3 h, vec3 n) {
+				float NdotLClamped = max(dot(n,l), 0.0);
+				float NdotVClamped = max(dot(n,v), 0.0);
+				return ( NdotLClamped * NdotVClamped ) / pow(dot(v,h), 2.0);
+			}
+
+			float GBeckmannHelper(float a, vec3 t, vec3 n) {
+				float NdotTClamped = max(dot(n,t), 0.0);
+				return NdotTClamped / (a * sqrt(1.0 - pow(NdotTClamped, 2.0)));
+			}
+
+			float GBeckmann(float a, vec3 l, vec3 v, vec3 h, vec3 n) {
+				float c1 = GBeckmannHelper(a, v, n);
+				float c2 = GBeckmannHelper(a, l, n);
+
+				float c12 = c1*c1;
+				float c22 = c2*c2;
+				float GV, GL;
+
+				if(c1 < 1.6) {
+					GV = (3.535 * c1 + 2.181 * c12) / (1.0 + 2.276*c1 + 2.577*c12);
+				}
+				else {
+					GV = 1.0;
+				}
+
+				if(c2 < 1.6) {
+					GL = (3.535 * c2 + 2.181 * c22) / (1.0 + 2.276*c2 + 2.577*c22);
+				}
+				else {
+					GL = 1.0;
+				}
+
+				return GL*GV;
+			}
+
+			float GSchlick_Beckmann(float a, vec3 l, vec3 v, vec3 h, vec3 n) {
+				float k = a * sqrt(2.0/M_PI);
+				float NdotVClamped = dotClamped(n,v);
+				float NdotLClamped = dotClamped(n,l);
+
+				float GV = NdotVClamped / (NdotVClamped * (1.0-k) + k);
+				float GL = NdotLClamped / (NdotLClamped * (1.0-k) + k);
+
+				return GV*GL;
+			}
+
 			void main()	{
 		//		viewMatrix
 		//		cameraPosition
@@ -117,19 +169,14 @@
 
 				float fresnel = pow((1.0 - u_fresnel) / (1.0 + u_fresnel), 2.0);
 
-				float brdf_spec = F(fresnel, lightDir, halfVec) * GCookTorrance(lightDir, viewDir, halfVec, viewNormal) * NDFBlinnPhong(alpha, viewNormal, halfVec) / (4.0 * NdotLClamped  * NdotVClamped );
-				//float brdf_spec = 0.5 * F(fresnel, lightDir, halfVec);
-				//float brdf_spec = GCookTorrance(lightDir, viewDir, halfVec, viewNormal);
-				//float brdf_spec = NDFBeckmann(alpha, viewNormal, halfVec);
-				//float brdf_spec = 1.0 / (4.0 * NdotLClamped  * NdotVClamped );
+				float brdf_spec = F(fresnel, lightDir, halfVec) * GKelemen(lightDir, viewDir, halfVec, viewNormal) * NDFBlinnPhong(alpha, viewNormal, halfVec) / (4.0 * NdotLClamped  * NdotVClamped );
+				//float brdf_spec = F(fresnel, lightDir, halfVec) * GSchlick_Beckmann(alpha, lightDir, viewDir, halfVec, viewNormal) * NDFBeckmann(alpha, viewNormal, halfVec) / (4.0 * NdotLClamped  * NdotVClamped );
 
-				vec3 specColor = brdf_spec * u_lightColor;
-				vec3 diffuseColor = u_diffuseColor.xyz * diffuse;
+				vec3 specColor = brdf_spec * u_lightColor * NdotLClamped;
+				vec3 diffuseColor = u_diffuseColor.xyz * diffuse * (1.0 - F(fresnel, lightDir, halfVec));
 
 				//gl_FragColor = vec4(vec3(brdf_spec, brdf_spec, brdf_spec), 1.0);
-				//gl_FragColor = vec4(vec3(0.91, 0.91, 0.91), 1.0);
-				gl_FragColor = vec4( 0.8 * diffuseColor +  0.4 * specColor, 1.0);
-
+				gl_FragColor = vec4( diffuseColor +  specColor, 1.0);
 			}
 
 		</script>
@@ -164,8 +211,8 @@
 
 				property = new property();
 
-				container = document.createElement( 'div' );
-				document.body.appendChild( container );
+				container = document.getElementById('container');
+				document.body.appendChild(container);
 
 				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 100 );
 				camera.position.z = 2;
@@ -182,7 +229,6 @@
 				var boxGeo = new THREE.BoxGeometry(1,1,1);
 
 				material = new THREE.ShaderMaterial( {
-
 					uniforms: {
 						u_lightColor: { type: "v3", value: new THREE.Vector3(light.color.r, light.color.g, light.color.b)  },
 						u_lightDir: { type: "v3", value: new THREE.Vector3(1,1,1) },
@@ -195,12 +241,7 @@
 					vertexShader: document.getElementById( 'vertexShader' ).textContent,
 					fragmentShader: document.getElementById( 'fragmentShader' ).textContent,
 					transparent: true
-
 				} );
-
-				// var material = new THREE.MeshPhongMaterial( {
-				// 	color: new THREE.Vector3(0.3, 0.7, 0.5),
-				// })
 
 
 				var loader = new THREE.JSONLoader();
@@ -245,13 +286,6 @@
 
 			}
 
-			function onDocumentMouseMove(event) {
-
-				mouseX = ( event.clientX - windowHalfX ) * 10;
-				mouseY = ( event.clientY - windowHalfY ) * 10;
-
-			}
-
 			//
 
 			function animate() {
@@ -272,12 +306,11 @@
 			}
 
 			function property() {
-				this.roughness = 0.1;
-				this.fresnel = 1.0;
+				this.roughness = 0.21;
+				this.fresnel = 10.0;
 			}
 
 			window.onload = function() {
-
 				var datGui = new dat.GUI();
 			  datGui.add(property, 'roughness', 0.01, 1.0);
 			  datGui.add(property, 'fresnel', 1.0, 20.0);
