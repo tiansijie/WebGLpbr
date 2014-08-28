@@ -37,8 +37,6 @@ function init() {
   camera.position.z = 2;
   camera.position.x = 1;
 
-
-
   scene = new THREE.Scene();
 
   var light = new THREE.PointLight( 0xffffff, 1, 100 );
@@ -53,7 +51,7 @@ function init() {
       u_lightDir: { type: "v3", value: new THREE.Vector3(1,1,1) },
       u_lightPos: { type: "v3", value: light.position},
       u_viewPos: {type: "v3", value: camera.position },
-      u_diffuseColor: {type: "v3", value: new THREE.Vector3(0.0, 0.66, 0.42)},
+      u_diffuseColor: {type: "v3", value: new THREE.Vector3(0.85, 0.56, 0.34)},
       u_roughness: {type: "f", value: propertyGUI.roughness },
       u_fresnel: {type: "f", value: propertyGUI.fresnel },
     },

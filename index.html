@@ -179,15 +179,14 @@
 			void main()	{
 		//		viewMatrix
 		//		cameraPosition
-
 				vec3 normal = normalize(vNormal.xyz);
 				vec3 viewNormal = normalize(vViewNormal.xyz);
 				vec3 viewDir = normalize(-vViewPosition);
 				//vec3 lightDir = normalize(u_lightPos - vPosition).xyz;
-				vec3 lightDir = normalize((viewMatrix * vec4(u_lightDir, 0.0)).xyz);
+				vec3 lightDir = normalize((viewMatrix * vec4(normalize(u_lightDir), 0.0)).xyz);
 				vec3 halfVec = normalize(viewDir + lightDir);
 
-				float diffuse = max(dot(u_lightDir, normal), 0.0);
+				float diffuse = max(dot(normalize(u_lightDir), normal), 0.0);
 
 				float NdotL= dot(viewNormal, lightDir);
 				float NdotV= dot(viewNormal, viewDir);
@@ -201,7 +200,7 @@
 				float brdf_spec = F(fresnel, lightDir, halfVec) * G(alpha, lightDir, viewDir, halfVec, viewNormal) * N(alpha, viewNormal, halfVec) / (4.0 * NdotLClamped  * NdotVClamped );
 				//float brdf_spec = F(fresnel, lightDir, halfVec) * GSchlick_Beckmann(alpha, lightDir, viewDir, halfVec, viewNormal) * NDFBeckmann(alpha, viewNormal, halfVec) / (4.0 * NdotLClamped  * NdotVClamped );
 
-				vec3 specColor = brdf_spec * u_lightColor * NdotLClamped;
+				vec3 specColor = M_PI * brdf_spec * u_lightColor * NdotLClamped;
 				vec3 diffuseColor = u_diffuseColor.xyz * diffuse * (1.0 - F(fresnel, lightDir, halfVec));
 
 				//gl_FragColor = vec4(vec3(brdf_spec, brdf_spec, brdf_spec), 1.0);
