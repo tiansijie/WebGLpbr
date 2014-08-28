@@ -13,13 +13,15 @@
 				overflow:hidden;
 			}
 		</style>
-		<div id="container" style="width:100%; height: 100%;"></div>
+
 	</head>
 	<body>
 
+		<div id="container" style="width: 100%; height: 100%;"></div>
 		<script src="/~sijietian/pbr/threejs/build/three.js"></script>
 		<script src="/~sijietian/pbr/threejs/controls/OrbitControls.js"></script>
 		<script type="text/javascript" src="/~sijietian/pbr/dat.gui.min.js"></script>
+
 
 		<script id="vertexShader" type="x-shader/x-vertex">
 
@@ -43,7 +45,7 @@
 
 		</script>
 
-		<script id="fragmentShader" type="x-shader/x-fragment">
+		<script id="fragmentShader_param" type="x-shader/x-fragment">
 
 			precision mediump float;
 			precision mediump int;
@@ -71,47 +73,67 @@
 				return f0 + (1.0-f0) * pow(1.0-dot(l,h),5.0);
 			}
 
-			float NDFBlinnPhong(float a, vec3 n, vec3 h) {
+		</script>
+
+
+		<script id="NDFBlinnPhong" type="x-shader/x-fragment">
+			float N(float a, vec3 n, vec3 h) {
 				float powTerm = 2.0/(a*a) - 2.0;
 				float NdotHClamped = max(dot(n,h), 0.0);
 				return (1.0 / (M_PI * a * a)) * (pow(NdotHClamped, powTerm));
 			}
+		</script>
 
-			float NDFBeckmann(float a, vec3 n, vec3 h) {
+		<script id="NDFBeckmann" type="x-shader/x-fragment">
+			float N(float a, vec3 n, vec3 h) {
 				float NdotHClamped = max(dot(n,h), 0.0);
 				return 1.0 / (M_PI * a * a * pow(NdotHClamped, 4.0)) * exp((pow(NdotHClamped,2.0) - 1.0) / (a * a * pow(NdotHClamped, 2.0)));
 			}
+		</script>
 
-			float NDFGGX(float a, vec3 n, vec3 h) {
+		<script id="NDFGGX" type="x-shader/x-fragment">
+			float N(float a, vec3 n, vec3 h) {
 				float NdotHClamped = max(dot(n,h), 0.0);
 				float a2 = a*a;
 				return a2 / (M_PI * pow(pow(NdotHClamped, 2.0) * (a2 - 1.0) + 1.0, 2.0));
 			}
+		</script>
 
-			float GImplicit(vec3 l, vec3 v, vec3 h, vec3 n) {
+		<script id="GImplicit" type="x-shader/x-fragment">
+			float G(float a, vec3 l, vec3 v, vec3 h, vec3 n) {
 				return max(dot(l, n), 0.0) * max(dot(v, n), 0.0);
 			}
+		</script>
 
-			float GCookTorrance(vec3 l, vec3 v, vec3 h, vec3 n) {
+
+		<script id="GCookTorrance" type="x-shader/x-fragment">
+			float G(float a, vec3 l, vec3 v, vec3 h, vec3 n) {
 				float NdotVClamped = max(dot(n,v), 0.0);
 				float NdotLClamped = max(dot(n,l), 0.0);
 				float VdotH = max(dot(v,h), 0.0);
 				float NdotH = max(dot(n,h), 0.0);
 				return min(1.0, min((2.0 * NdotH * NdotVClamped) / VdotH, (2.0 * NdotH * NdotLClamped) / VdotH));
 			}
+		</script>
 
-			float GKelemen(vec3 l, vec3 v, vec3 h, vec3 n) {
+
+		<script id="GKelemen" type="x-shader/x-fragment">
+			float G(float a, vec3 l, vec3 v, vec3 h, vec3 n) {
 				float NdotLClamped = max(dot(n,l), 0.0);
 				float NdotVClamped = max(dot(n,v), 0.0);
 				return ( NdotLClamped * NdotVClamped ) / pow(dot(v,h), 2.0);
 			}
+		</script>
+
+
+		<script id="GBeckmann" type="x-shader/x-fragment">
 
 			float GBeckmannHelper(float a, vec3 t, vec3 n) {
 				float NdotTClamped = max(dot(n,t), 0.0);
 				return NdotTClamped / (a * sqrt(1.0 - pow(NdotTClamped, 2.0)));
 			}
 
-			float GBeckmann(float a, vec3 l, vec3 v, vec3 h, vec3 n) {
+			float G(float a, vec3 l, vec3 v, vec3 h, vec3 n) {
 				float c1 = GBeckmannHelper(a, v, n);
 				float c2 = GBeckmannHelper(a, l, n);
 
@@ -136,7 +158,11 @@
 				return GL*GV;
 			}
 
-			float GSchlick_Beckmann(float a, vec3 l, vec3 v, vec3 h, vec3 n) {
+		</script>
+
+
+		<script id="GSchlick_Beckmann" type="x-shader/x-fragment">
+			float G(float a, vec3 l, vec3 v, vec3 h, vec3 n) {
 				float k = a * sqrt(2.0/M_PI);
 				float NdotVClamped = dotClamped(n,v);
 				float NdotLClamped = dotClamped(n,l);
@@ -146,7 +172,10 @@
 
 				return GV*GL;
 			}
+		</script>
 
+
+		<script id="fragmentShader_main" type="x-shader/x-fragment">
 			void main()	{
 		//		viewMatrix
 		//		cameraPosition
@@ -169,7 +198,7 @@
 
 				float fresnel = pow((1.0 - u_fresnel) / (1.0 + u_fresnel), 2.0);
 
-				float brdf_spec = F(fresnel, lightDir, halfVec) * GKelemen(lightDir, viewDir, halfVec, viewNormal) * NDFBlinnPhong(alpha, viewNormal, halfVec) / (4.0 * NdotLClamped  * NdotVClamped );
+				float brdf_spec = F(fresnel, lightDir, halfVec) * G(alpha, lightDir, viewDir, halfVec, viewNormal) * N(alpha, viewNormal, halfVec) / (4.0 * NdotLClamped  * NdotVClamped );
 				//float brdf_spec = F(fresnel, lightDir, halfVec) * GSchlick_Beckmann(alpha, lightDir, viewDir, halfVec, viewNormal) * NDFBeckmann(alpha, viewNormal, halfVec) / (4.0 * NdotLClamped  * NdotVClamped );
 
 				vec3 specColor = brdf_spec * u_lightColor * NdotLClamped;
@@ -178,145 +207,10 @@
 				//gl_FragColor = vec4(vec3(brdf_spec, brdf_spec, brdf_spec), 1.0);
 				gl_FragColor = vec4( diffuseColor +  specColor, 1.0);
 			}
-
 		</script>
+		<script type="text/javascript" src="/~sijietian/pbr/main.js"></script>
 
 
-		<script>
-
-			var container, stats;
-
-			var camera, scene, renderer;
-
-			var objects, controller;
-
-			var mouseX = 0, mouseY = 0;
-
-			var windowHalfX = window.innerWidth / 2;
-			var windowHalfY = window.innerHeight / 2;
-
-			var time;
-
-			var property;
-
-			var material;
-
-			//document.addEventListener( 'mousemove', onDocumentMouseMove, false );
-
-			init();
-			animate();
-
-
-			function init() {
-
-				property = new property();
-
-				container = document.getElementById('container');
-				document.body.appendChild(container);
-
-				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 100 );
-				camera.position.z = 2;
-				camera.position.x = 1;
-
-				controller = new THREE.OrbitControls(camera);
-
-				scene = new THREE.Scene();
-
-				var light = new THREE.PointLight( 0xffffff, 1, 100 );
-				light.position.set( 5, 5, 5 );
-				scene.add(light);
-
-				var boxGeo = new THREE.BoxGeometry(1,1,1);
-
-				material = new THREE.ShaderMaterial( {
-					uniforms: {
-						u_lightColor: { type: "v3", value: new THREE.Vector3(light.color.r, light.color.g, light.color.b)  },
-						u_lightDir: { type: "v3", value: new THREE.Vector3(1,1,1) },
-						u_lightPos: { type: "v3", value: light.position},
-						u_viewPos: {type: "v3", value: camera.position },
-						u_diffuseColor: {type: "v3", value: new THREE.Vector3(0.0, 0.66, 0.42)},
-						u_roughness: {type: "f", value: property.roughness },
-						u_fresnel: {type: "f", value: property.fresnel },
-					},
-					vertexShader: document.getElementById( 'vertexShader' ).textContent,
-					fragmentShader: document.getElementById( 'fragmentShader' ).textContent,
-					transparent: true
-				} );
-
-
-				var loader = new THREE.JSONLoader();
-
-				loader.load('./dragon.json', function(geometry, materials) {
-						var mesh = new THREE.Mesh(geometry, material);
-						scene.add(mesh);
-				});
-
-
-				var boxMaterial = new THREE.MeshNormalMaterial( {color:new THREE.Color('rgb(1,0.4,1)'), shading: THREE.SmoothShading } );
-				var boxMesh = new THREE.Mesh(boxGeo, boxMaterial);
-				//scene.add(boxMesh);
-
-				var mesh = new THREE.Mesh(boxGeo, material);
-				//scene.add(mesh);
-
-				renderer = new THREE.WebGLRenderer();
-				renderer.setClearColor( 0xffffff, 1 );
-				renderer.setSize( window.innerWidth, window.innerHeight );
-				container.appendChild( renderer.domElement );
-
-				// stats = new Stats();
-				// stats.domElement.style.position = 'absolute';
-				// stats.domElement.style.top = '0px';
-				// stats.domElement.style.zIndex = 100;
-				// container.appendChild( stats.domElement );
-
-				window.addEventListener( 'resize', onWindowResize, false );
-
-			}
-
-			function onWindowResize() {
-
-				windowHalfX = window.innerWidth / 2;
-				windowHalfY = window.innerHeight / 2;
-
-				camera.aspect = window.innerWidth / window.innerHeight;
-				camera.updateProjectionMatrix();
-
-				renderer.setSize( window.innerWidth, window.innerHeight );
-
-			}
-
-			//
-
-			function animate() {
-
-				requestAnimationFrame( animate );
-
-				render();
-				//stats.update();
-				material.uniforms['u_roughness'].value = property.roughness;
-				material.uniforms['u_fresnel'].value = property.fresnel;
-
-			}
-
-			function render() {
-
-				renderer.render( scene, camera );
-
-			}
-
-			function property() {
-				this.roughness = 0.21;
-				this.fresnel = 10.0;
-			}
-
-			window.onload = function() {
-				var datGui = new dat.GUI();
-			  datGui.add(property, 'roughness', 0.01, 1.0);
-			  datGui.add(property, 'fresnel', 1.0, 20.0);
-			}
-
-		</script>
 
 	</body>
 </html>
