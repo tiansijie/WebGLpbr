@@ -33,9 +33,12 @@ function init() {
   container = document.getElementById('container');
   document.body.appendChild(container);
 
-  camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 100 );
+  camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 500 );
   camera.position.z = 2;
   camera.position.x = 1;
+  camera.lightDir = new THREE.Vector3(1,1,1);
+  camera.lightDir.normalize();
+  updateCamera();
 
   scene = new THREE.Scene();
 
@@ -48,12 +51,16 @@ function init() {
   material = new THREE.ShaderMaterial( {
     uniforms: {
       u_lightColor: { type: "v3", value: new THREE.Vector3(light.color.r, light.color.g, light.color.b)  },
-      u_lightDir: { type: "v3", value: new THREE.Vector3(1,1,1) },
+      u_lightDir: { type: "v3", value: camera.lightDir },
+      u_viewLightDir: { type: "v3", value: camera.viewLightDir },
       u_lightPos: { type: "v3", value: light.position},
       u_viewPos: {type: "v3", value: camera.position },
       u_diffuseColor: {type: "v3", value: new THREE.Vector3(0.85, 0.56, 0.34)},
+      u_ambientColor: {type: "v3", value: new THREE.Vector3(0.1, 0.1, 0.1)},
       u_roughness: {type: "f", value: propertyGUI.roughness },
       u_fresnel: {type: "f", value: propertyGUI.fresnel },
+      u_alpha: {type: "f", value: propertyGUI.roughness * propertyGUI.roughness },
+      //u_texture: {type: "t", value: null },
     },
     vertexShader: document.getElementById( 'vertexShader' ).textContent,
     fragmentShader: currentFragShader,
@@ -63,9 +70,17 @@ function init() {
 
   var loader = new THREE.JSONLoader();
 
-  loader.load('./dragon.json', function(geometry, materials) {
+  loader.load('./objects/bunny.json', function(geometry, materials) {
+
       var mesh = new THREE.Mesh(geometry, material);
       scene.add(mesh);
+      //debugger;
+      // for(var i = 0; i < 2; ++i) {
+      //   var objMaterial = material.clone();
+      //   objMaterial.uniforms['u_texture'].value = materials[i].map
+      //   var mesh = new THREE.Mesh(geometry, objMaterial);
+      //   scene.add(mesh);
+      // }
   });
 
 
@@ -109,12 +124,15 @@ function onWindowResize() {
 function animate() {
 
   requestAnimationFrame( animate );
+  //controller.update();
 
   render();
   //stats.update();
+  updateCamera();
   material.uniforms['u_roughness'].value = propertyGUI.roughness;
+  material.uniforms['u_alpha'].value = propertyGUI.roughness * propertyGUI.roughness;
   material.uniforms['u_fresnel'].value = propertyGUI.fresnel;
-
+  material.uniforms['u_viewLightDir'].value = camera.viewLightDir;
 
   currentFragShader = BRDFFragmentShader.init
   + BRDFFragmentShader.N[propertyGUI.Normal_Dirstribution_Function]
@@ -128,7 +146,7 @@ function animate() {
 function render() {
 
   renderer.render( scene, camera );
-
+  //debugger;
 }
 
 function property() {
@@ -168,4 +186,9 @@ function initShader() {
   + BRDFFragmentShader.N['BlinnPhong']
   + BRDFFragmentShader.G['CookTorrance']
   + BRDFFragmentShader.main;
+}
+
+function updateCamera() {
+  camera.viewLightDir = new THREE.Vector4(camera.lightDir.x, camera.lightDir.y, camera.lightDir.z, 0.0).applyMatrix4(camera.matrixWorldInverse);
+  camera.viewLightDir.normalize();
 }

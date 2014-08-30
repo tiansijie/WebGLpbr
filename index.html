@@ -28,17 +28,17 @@
 			precision mediump float;
 			precision mediump int;
 
-			varying vec3 vPosition;
 			varying vec3 vViewPosition;
 			varying vec4 vNormal;
 			varying vec4 vViewNormal;
+			varying vec2 vUv;
 
 			void main()	{
 
-				vPosition = position;
 				vViewPosition = (modelViewMatrix * vec4(position,1.0)).xyz;
 				vNormal = vec4(normal.xyz, 0.0);
 				vViewNormal = modelViewMatrix * vec4(normal.xyz, 0.0);
+			//	vUv = uv;
 
 				gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
 			}
@@ -52,16 +52,20 @@
 
 			uniform vec3 u_lightColor;
 			uniform vec3 u_lightDir;
+			uniform vec3 u_viewLightDir;
 			uniform vec3 u_lightPos;
 			uniform vec3 u_viewPos;
 			uniform vec3 u_diffuseColor;
 			uniform float u_roughness;
 			uniform float u_fresnel;
+			uniform float u_alpha;
+			uniform vec3 u_ambientColor;
+			uniform sampler2D u_texture;
 
-			varying vec3 vPosition;
 			varying vec3 vViewPosition;
 			varying vec4 vNormal;
 			varying vec4 vViewNormal;
+			varying vec2 vUv;
 
 			#define M_PI 3.1415926535897932384626433832795
 
@@ -77,65 +81,61 @@
 
 
 		<script id="NDFBlinnPhong" type="x-shader/x-fragment">
-			float N(float a, vec3 n, vec3 h) {
-				float powTerm = 2.0/(a*a) - 2.0;
-				float NdotHClamped = max(dot(n,h), 0.0);
-				return (1.0 / (M_PI * a * a)) * (pow(NdotHClamped, powTerm));
+			float N(float a, vec3 n, vec3 h, float NoH) {
+				float a2 = a*a;
+				float powTerm = 2.0 / a2 - 2.0;
+				return (1.0 / (4.0 * a2)) * (pow(NoH, powTerm));
 			}
 		</script>
 
 		<script id="NDFBeckmann" type="x-shader/x-fragment">
-			float N(float a, vec3 n, vec3 h) {
-				float NdotHClamped = max(dot(n,h), 0.0);
-				return 1.0 / (M_PI * a * a * pow(NdotHClamped, 4.0)) * exp((pow(NdotHClamped,2.0) - 1.0) / (a * a * pow(NdotHClamped, 2.0)));
+			float N(float a, vec3 n, vec3 h, float NoH) {
+				float a2 = a*a;
+				float NoH2 = pow(NoH, 2.0);
+				return (1.0 / (4.0 * a2 * pow(NoH, 4.0))) * exp((NoH2 - 1.0) / (a2 * NoH2));
 			}
 		</script>
 
 		<script id="NDFGGX" type="x-shader/x-fragment">
-			float N(float a, vec3 n, vec3 h) {
-				float NdotHClamped = max(dot(n,h), 0.0);
+			float N(float a, vec3 n, vec3 h, float NoH) {
 				float a2 = a*a;
-				return a2 / (M_PI * pow(pow(NdotHClamped, 2.0) * (a2 - 1.0) + 1.0, 2.0));
+				return a2 / (4.0 * pow(pow(NoH, 2.0) * (a2 - 1.0) + 1.0, 2.0));
 			}
 		</script>
 
 		<script id="GImplicit" type="x-shader/x-fragment">
-			float G(float a, vec3 l, vec3 v, vec3 h, vec3 n) {
-				return max(dot(l, n), 0.0) * max(dot(v, n), 0.0);
+			float G(float a, vec3 l, vec3 v, vec3 h, vec3 n, float NoL, float NoV) {
+				return 1.0;
 			}
 		</script>
 
 
 		<script id="GCookTorrance" type="x-shader/x-fragment">
-			float G(float a, vec3 l, vec3 v, vec3 h, vec3 n) {
-				float NdotVClamped = max(dot(n,v), 0.0);
-				float NdotLClamped = max(dot(n,l), 0.0);
+			float G(float a, vec3 l, vec3 v, vec3 h, vec3 n, float NoL, float NoV) {
 				float VdotH = max(dot(v,h), 0.0);
 				float NdotH = max(dot(n,h), 0.0);
-				return min(1.0, min((2.0 * NdotH * NdotVClamped) / VdotH, (2.0 * NdotH * NdotLClamped) / VdotH));
+				float minV = 2.0 * NdotH * min(NoV, NoL) / VdotH;
+				return min(1.0, minV);
 			}
 		</script>
 
 
 		<script id="GKelemen" type="x-shader/x-fragment">
-			float G(float a, vec3 l, vec3 v, vec3 h, vec3 n) {
-				float NdotLClamped = max(dot(n,l), 0.0);
-				float NdotVClamped = max(dot(n,v), 0.0);
-				return ( NdotLClamped * NdotVClamped ) / pow(dot(v,h), 2.0);
+			float G(float a, vec3 l, vec3 v, vec3 h, vec3 n, float NoL, float NoV) {
+				return (1.0) / pow(dot(v,h), 2.0);
 			}
 		</script>
 
 
 		<script id="GBeckmann" type="x-shader/x-fragment">
 
-			float GBeckmannHelper(float a, vec3 t, vec3 n) {
-				float NdotTClamped = max(dot(n,t), 0.0);
-				return NdotTClamped / (a * sqrt(1.0 - pow(NdotTClamped, 2.0)));
+			float GBeckmannHelper(float a, float NoT) {
+				return NoT / (a * sqrt(1.0 - pow(NoT, 2.0)));
 			}
 
-			float G(float a, vec3 l, vec3 v, vec3 h, vec3 n) {
-				float c1 = GBeckmannHelper(a, v, n);
-				float c2 = GBeckmannHelper(a, l, n);
+			float G(float a, vec3 l, vec3 v, vec3 h, vec3 n, float NoL, float NoV) {
+				float c1 = GBeckmannHelper(a, NoV);
+				float c2 = GBeckmannHelper(a, NoL);
 
 				float c12 = c1*c1;
 				float c22 = c2*c2;
@@ -157,19 +157,14 @@
 
 				return GL*GV;
 			}
-
 		</script>
 
 
 		<script id="GSchlick_Beckmann" type="x-shader/x-fragment">
-			float G(float a, vec3 l, vec3 v, vec3 h, vec3 n) {
+			float G(float a, vec3 l, vec3 v, vec3 h, vec3 n, float NoL, float NoV) {
 				float k = a * sqrt(2.0/M_PI);
-				float NdotVClamped = dotClamped(n,v);
-				float NdotLClamped = dotClamped(n,l);
-
-				float GV = NdotVClamped / (NdotVClamped * (1.0-k) + k);
-				float GL = NdotLClamped / (NdotLClamped * (1.0-k) + k);
-
+				float GV = 1.0 / (NoV * (1.0-k) + k);
+				float GL = 1.0 / (NoL * (1.0-k) + k);
 				return GV*GL;
 			}
 		</script>
@@ -182,34 +177,35 @@
 				vec3 normal = normalize(vNormal.xyz);
 				vec3 viewNormal = normalize(vViewNormal.xyz);
 				vec3 viewDir = normalize(-vViewPosition);
-				//vec3 lightDir = normalize(u_lightPos - vPosition).xyz;
-				vec3 lightDir = normalize((viewMatrix * vec4(normalize(u_lightDir), 0.0)).xyz);
-				vec3 halfVec = normalize(viewDir + lightDir);
-
+				vec3 halfVec = normalize(viewDir + u_viewLightDir);
 				float diffuse = max(dot(normalize(u_lightDir), normal), 0.0);
 
-				float NdotL= dot(viewNormal, lightDir);
-				float NdotV= dot(viewNormal, viewDir);
-				float NdotLClamped = max(NdotL, 0.0);
-				float NdotVClamped = max(NdotV, 0.0);
+				float NoL= max(dot(viewNormal, u_viewLightDir), 0.0);
+				float NoV= max(dot(viewNormal, viewDir), 0.0);
+				float NoH = max(dot(viewNormal, halfVec), 0.0);
 
-				float alpha = u_roughness * u_roughness;
+				float alpha = u_alpha;
 
 				float fresnel = pow((1.0 - u_fresnel) / (1.0 + u_fresnel), 2.0);
 
-				float brdf_spec = F(fresnel, lightDir, halfVec) * G(alpha, lightDir, viewDir, halfVec, viewNormal) * N(alpha, viewNormal, halfVec) / (4.0 * NdotLClamped  * NdotVClamped );
-				//float brdf_spec = F(fresnel, lightDir, halfVec) * GSchlick_Beckmann(alpha, lightDir, viewDir, halfVec, viewNormal) * NDFBeckmann(alpha, viewNormal, halfVec) / (4.0 * NdotLClamped  * NdotVClamped );
+				float fresnel_fn = F(fresnel, u_viewLightDir, halfVec);
+				/*Put M_PI/4.0 in to NDF functions*/
+				float ndf_fn = N(alpha, viewNormal, halfVec, NoH);
+				/*Put /(NoL*NoV) in G funtion*/
+				float g_fn = G(alpha, u_viewLightDir, viewDir, halfVec, viewNormal, NoL, NoV);
 
-				vec3 specColor = M_PI * brdf_spec * u_lightColor * NdotLClamped;
-				vec3 diffuseColor = u_diffuseColor.xyz * diffuse * (1.0 - F(fresnel, lightDir, halfVec));
+				float brdf_spec = fresnel_fn * ndf_fn * g_fn;
+
+				//vec3 tColor = texture2D(u_texture, vUv).xyz;
+
+				vec3 specColor = brdf_spec * u_lightColor * NoL;
+				vec3 diffuseColor = u_diffuseColor * diffuse * (1.0 - fresnel_fn) * u_lightColor;
 
 				//gl_FragColor = vec4(vec3(brdf_spec, brdf_spec, brdf_spec), 1.0);
-				gl_FragColor = vec4( diffuseColor +  specColor, 1.0);
+				gl_FragColor = vec4( diffuseColor +  specColor + u_ambientColor * u_diffuseColor, 1.0);
 			}
 		</script>
 		<script type="text/javascript" src="/~sijietian/pbr/main.js"></script>
-
-
 
 	</body>
 </html>
