@@ -11,7 +11,7 @@ var windowHalfY = window.innerHeight / 2;
 
 var time;
 
-var propertyGUI;
+var propertyGUI = {};
 
 var material, mats;
 
@@ -26,8 +26,6 @@ animate();
 
 function init() {
 
-  propertyGUI = new property();
-
   initShader();
 
   container = document.getElementById('container');
@@ -36,14 +34,14 @@ function init() {
   camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 500 );
   camera.position.z = 2;
   camera.position.x = 1;
-  camera.lightDir = new THREE.Vector3(1,1,1);
+  camera.lightDir = new THREE.Vector3(0,1,0);
   camera.lightDir.normalize();
   updateCamera();
 
   scene = new THREE.Scene();
 
-  var light = new THREE.PointLight( 0xffffff, 1, 100 );
-  light.position.set( 5, 5, 5 );
+  var light = new THREE.PointLight( 0xffffff, 1, 1000 );
+  light.position.set( 0, 100, 0 );
   scene.add(light);
 
   var boxGeo = new THREE.BoxGeometry(1,1,1);
@@ -57,9 +55,9 @@ function init() {
       u_viewPos: {type: "v3", value: camera.position },
       u_diffuseColor: {type: "v3", value: new THREE.Vector3(0.85, 0.56, 0.34)},
       u_ambientColor: {type: "v3", value: new THREE.Vector3(0.1, 0.1, 0.1)},
-      u_roughness: {type: "f", value: propertyGUI.roughness },
-      u_fresnel: {type: "f", value: propertyGUI.fresnel },
-      u_alpha: {type: "f", value: propertyGUI.roughness * propertyGUI.roughness },
+      u_roughness: {type: "f", value: 0.0 },
+      u_fresnel: {type: "f", value: 0.0 },
+      u_alpha: {type: "f", value: 0.0 },
       u_texture: {type: "t", value: null },
     },
     vertexShader: document.getElementById( 'vertexShader' ).textContent,
@@ -70,7 +68,7 @@ function init() {
 
   var loader = new THREE.JSONLoader();
 
-  loader.load('./objects/chiavari.json', function(geometry, materials) {
+  loader.load('./objects/banquet.json', function(geometry, materials) {
 
       for(var i = 0; i < materials.length; ++i) {
         var mat = materials[i];
@@ -79,7 +77,7 @@ function init() {
       }
 
       mats = materials;
-
+      addUI();
       var mesh = new THREE.Mesh(geometry, new THREE.MeshFaceMaterial(materials));
       scene.add(mesh);
   });
@@ -133,14 +131,14 @@ function animate() {
 
   if(mats) {
     for(var i = 0; i < mats.length; ++i) {
-      mats[i].uniforms['u_roughness'].value = propertyGUI.roughness;
-      mats[i].uniforms['u_alpha'].value = propertyGUI.roughness * propertyGUI.roughness;
-      mats[i].uniforms['u_fresnel'].value = propertyGUI.fresnel;
+      mats[i].uniforms['u_roughness'].value = propertyGUI[i].roughness;
+      mats[i].uniforms['u_alpha'].value = propertyGUI[i].roughness * propertyGUI[i].roughness;
+      mats[i].uniforms['u_fresnel'].value = propertyGUI[i].fresnel;
       mats[i].uniforms['u_viewLightDir'].value = camera.viewLightDir;
 
       currentFragShader = BRDFFragmentShader.init
-      + BRDFFragmentShader.N[propertyGUI.Normal_Dirstribution_Function]
-      + BRDFFragmentShader.G[propertyGUI.Geometric_Shadowing]
+      + BRDFFragmentShader.N[propertyGUI[i].Normal_Dirstribution_Function]
+      + BRDFFragmentShader.G[propertyGUI[i].Geometric_Shadowing]
       + BRDFFragmentShader.main;
 
       mats[i].fragmentShader = currentFragShader;
@@ -162,12 +160,16 @@ function property() {
   this.Geometric_Shadowing = 'CookTorrance';
 }
 
-window.onload = function() {
+
+function addUI() {
   var datGui = new dat.GUI();
-  datGui.add(propertyGUI, 'roughness', 0.01, 1.0);
-  datGui.add(propertyGUI, 'fresnel', 1.0, 20.0);
-  datGui.add(propertyGUI, 'Normal_Dirstribution_Function', ['BlinnPhong', 'Beckmann', 'GGX']);
-  datGui.add(propertyGUI, 'Geometric_Shadowing', ['Implicit', 'CookTorrance', 'Kelemen', 'Beckmann', 'Schlick_Beckmann']);
+  for(var i = 0; i < mats.length; ++i) {
+    propertyGUI[i] = new property();
+    datGui.add(propertyGUI[i], 'roughness', 0.01, 1.0);
+    datGui.add(propertyGUI[i], 'fresnel', 1.0, 20.0);
+    datGui.add(propertyGUI[i], 'Normal_Dirstribution_Function', ['BlinnPhong', 'Beckmann', 'GGX']);
+    datGui.add(propertyGUI[i], 'Geometric_Shadowing', ['Implicit', 'CookTorrance', 'Kelemen', 'Beckmann', 'Schlick_Beckmann']);
+  }
 }
 
 
