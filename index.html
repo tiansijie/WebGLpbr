@@ -38,7 +38,7 @@
 				vViewPosition = (modelViewMatrix * vec4(position,1.0)).xyz;
 				vNormal = vec4(normal.xyz, 0.0);
 				vViewNormal = modelViewMatrix * vec4(normal.xyz, 0.0);
-			//	vUv = uv;
+				vUv = uv;
 
 				gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
 			}
@@ -196,13 +196,13 @@
 
 				float brdf_spec = fresnel_fn * ndf_fn * g_fn;
 
-				//vec3 tColor = texture2D(u_texture, vUv).xyz;
+				vec3 tColor = texture2D(u_texture, vUv).xyz;
 
 				vec3 specColor = brdf_spec * u_lightColor * NoL;
-				vec3 diffuseColor = u_diffuseColor * diffuse * (1.0 - fresnel_fn) * u_lightColor;
+				vec3 diffuseColor = tColor * diffuse * (1.0 - fresnel_fn) * u_lightColor;
 
 				//gl_FragColor = vec4(vec3(brdf_spec, brdf_spec, brdf_spec), 1.0);
-				gl_FragColor = vec4( diffuseColor +  specColor + u_ambientColor * u_diffuseColor, 1.0);
+				gl_FragColor = vec4( diffuseColor +  specColor + u_ambientColor * tColor, 1.0);
 			}
 		</script>
 		<script type="text/javascript" src="/~sijietian/pbr/main.js"></script>

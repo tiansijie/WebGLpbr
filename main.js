@@ -13,7 +13,7 @@ var time;
 
 var propertyGUI;
 
-var material;
+var material, mats;
 
 
 var BRDFFragmentShader = {};
@@ -60,7 +60,7 @@ function init() {
       u_roughness: {type: "f", value: propertyGUI.roughness },
       u_fresnel: {type: "f", value: propertyGUI.fresnel },
       u_alpha: {type: "f", value: propertyGUI.roughness * propertyGUI.roughness },
-      //u_texture: {type: "t", value: null },
+      u_texture: {type: "t", value: null },
     },
     vertexShader: document.getElementById( 'vertexShader' ).textContent,
     fragmentShader: currentFragShader,
@@ -70,17 +70,18 @@ function init() {
 
   var loader = new THREE.JSONLoader();
 
-  loader.load('./objects/bunny.json', function(geometry, materials) {
+  loader.load('./objects/chiavari.json', function(geometry, materials) {
 
-      var mesh = new THREE.Mesh(geometry, material);
+      for(var i = 0; i < materials.length; ++i) {
+        var mat = materials[i];
+        materials[i] = material.clone();
+        materials[i].uniforms['u_texture'].value = mat.map;
+      }
+
+      mats = materials;
+
+      var mesh = new THREE.Mesh(geometry, new THREE.MeshFaceMaterial(materials));
       scene.add(mesh);
-      //debugger;
-      // for(var i = 0; i < 2; ++i) {
-      //   var objMaterial = material.clone();
-      //   objMaterial.uniforms['u_texture'].value = materials[i].map
-      //   var mesh = new THREE.Mesh(geometry, objMaterial);
-      //   scene.add(mesh);
-      // }
   });
 
 
@@ -129,18 +130,23 @@ function animate() {
   render();
   //stats.update();
   updateCamera();
-  material.uniforms['u_roughness'].value = propertyGUI.roughness;
-  material.uniforms['u_alpha'].value = propertyGUI.roughness * propertyGUI.roughness;
-  material.uniforms['u_fresnel'].value = propertyGUI.fresnel;
-  material.uniforms['u_viewLightDir'].value = camera.viewLightDir;
 
-  currentFragShader = BRDFFragmentShader.init
-  + BRDFFragmentShader.N[propertyGUI.Normal_Dirstribution_Function]
-  + BRDFFragmentShader.G[propertyGUI.Geometric_Shadowing]
-  + BRDFFragmentShader.main;
+  if(mats) {
+    for(var i = 0; i < mats.length; ++i) {
+      mats[i].uniforms['u_roughness'].value = propertyGUI.roughness;
+      mats[i].uniforms['u_alpha'].value = propertyGUI.roughness * propertyGUI.roughness;
+      mats[i].uniforms['u_fresnel'].value = propertyGUI.fresnel;
+      mats[i].uniforms['u_viewLightDir'].value = camera.viewLightDir;
 
-  material.fragmentShader = currentFragShader;
-  material.needsUpdate = true;
+      currentFragShader = BRDFFragmentShader.init
+      + BRDFFragmentShader.N[propertyGUI.Normal_Dirstribution_Function]
+      + BRDFFragmentShader.G[propertyGUI.Geometric_Shadowing]
+      + BRDFFragmentShader.main;
+
+      mats[i].fragmentShader = currentFragShader;
+      mats[i].needsUpdate = true;
+    }
+  }
 }
 
 function render() {
