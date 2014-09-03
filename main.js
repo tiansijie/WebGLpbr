@@ -64,7 +64,7 @@ function init() {
 
   var loader = new THREE.JSONLoader();
 
-  loader.load('./objects/chiavari.json', function(geometry, materials) {
+  loader.load('./objects/banquet.json', function(geometry, materials) {
 
       for(var i = 0; i < materials.length; ++i) {
         var mat = materials[i];

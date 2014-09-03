@@ -201,7 +201,7 @@
 				vec3 viewPosition = normalize(vViewPosition);
 
 				vec4 viewLightPos = viewMatrix * vec4( u_lightPos, 1.0 );
-				vec3 viewLightDir = viewLightPos.xyz - viewPosition.xyz  ;
+				vec3 viewLightDir = viewLightPos.xyz - viewPosition.xyz;
 				viewLightDir = normalize(viewLightDir);
 
 				vec3 normal = normalize(vNormal.xyz);
