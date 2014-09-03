@@ -41,7 +41,7 @@ function init() {
   scene = new THREE.Scene();
 
   var light = new THREE.PointLight( 0xffffff, 1, 1000 );
-  light.position.set( 0, 100, 0 );
+  light.position.set( 0, 500, 0 );
   scene.add(light);
 
   var boxGeo = new THREE.BoxGeometry(1,1,1);
@@ -49,11 +49,7 @@ function init() {
   material = new THREE.ShaderMaterial( {
     uniforms: {
       u_lightColor: { type: "v3", value: new THREE.Vector3(light.color.r, light.color.g, light.color.b)  },
-      u_lightDir: { type: "v3", value: camera.lightDir },
-      u_viewLightDir: { type: "v3", value: camera.viewLightDir },
       u_lightPos: { type: "v3", value: light.position},
-      u_viewPos: {type: "v3", value: camera.position },
-      u_diffuseColor: {type: "v3", value: new THREE.Vector3(0.85, 0.56, 0.34)},
       u_ambientColor: {type: "v3", value: new THREE.Vector3(0.1, 0.1, 0.1)},
       u_roughness: {type: "f", value: 0.0 },
       u_fresnel: {type: "f", value: 0.0 },
@@ -134,7 +130,7 @@ function animate() {
       mats[i].uniforms['u_roughness'].value = propertyGUI[i].roughness;
       mats[i].uniforms['u_alpha'].value = propertyGUI[i].roughness * propertyGUI[i].roughness;
       mats[i].uniforms['u_fresnel'].value = propertyGUI[i].fresnel;
-      mats[i].uniforms['u_viewLightDir'].value = camera.viewLightDir;
+      //mats[i].uniforms['u_viewLightDir'].value = camera.viewLightDir;
 
       currentFragShader = BRDFFragmentShader.init
       + BRDFFragmentShader.N[propertyGUI[i].Normal_Dirstribution_Function]

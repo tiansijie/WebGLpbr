@@ -30,14 +30,14 @@
 
 			varying vec3 vViewPosition;
 			varying vec4 vNormal;
-			varying vec4 vViewNormal;
+			varying vec3 vViewNormal;
 			varying vec2 vUv;
 
 			void main()	{
 
 				vViewPosition = (modelViewMatrix * vec4(position,1.0)).xyz;
 				vNormal = vec4(normal.xyz, 0.0);
-				vViewNormal = modelViewMatrix * vec4(normal.xyz, 0.0);
+				vViewNormal = normalMatrix * normal.xyz;
 				vUv = uv;
 
 				gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
@@ -51,10 +51,7 @@
 			precision mediump int;
 
 			uniform vec3 u_lightColor;
-			uniform vec3 u_lightDir;
-			uniform vec3 u_viewLightDir;
 			uniform vec3 u_lightPos;
-			uniform vec3 u_viewPos;
 			uniform vec3 u_diffuseColor;
 			uniform float u_roughness;
 			uniform float u_fresnel;
@@ -64,7 +61,7 @@
 
 			varying vec3 vViewPosition;
 			varying vec4 vNormal;
-			varying vec4 vViewNormal;
+			varying vec3 vViewNormal;
 			varying vec2 vUv;
 
 			#define M_PI 3.1415926535897932384626433832795
@@ -171,16 +168,49 @@
 
 
 		<script id="fragmentShader_main" type="x-shader/x-fragment">
+
+			vec3 dirDiffuse = vec3(0.0);
+			vec3 dirSpecular = vec3(0.0);
+
+			void calDirLight(vec3 lDir, vec3 normal, vec3 diffuse, vec3 specular) {
+
+				vec3 dirLightColor = vec3(1.0);
+
+				vec4 lDirection = viewMatrix * vec4( lDir, 0.0 );
+				vec3 dirVector = normalize( lDirection.xyz );
+
+				float dirDiffuseWeight = max(dot( normal, dirVector ), 0.0);
+
+				dirDiffuse += diffuse * dirLightColor * dirDiffuseWeight * 0.5;
+
+				vec3 dirHalfVector = normalize( dirVector + vViewPosition );
+				float dirDotNormalHalf = max( dot( normal, dirHalfVector ), 0.0 );
+				float dirSpecularWeight = 0.5 * max( pow( dirDotNormalHalf, 0.0 ), 0.0 );
+
+				float specularNormalization = ( 0.0 + 2.0 ) / 8.0;
+
+				vec3 schlick = specular + vec3( 1.0 - specular ) * pow( max( 1.0 - dot( dirVector, dirHalfVector ), 0.0 ), 5.0 );
+				dirSpecular += schlick * dirLightColor * dirSpecularWeight * dirDiffuseWeight * specularNormalization;
+
+			}
+
+
 			void main()	{
 		//		viewMatrix
 		//		cameraPosition
+				vec3 viewPosition = normalize(vViewPosition);
+
+				vec4 viewLightPos = viewMatrix * vec4( u_lightPos, 1.0 );
+				vec3 viewLightDir = viewLightPos.xyz - viewPosition.xyz  ;
+				viewLightDir = normalize(viewLightDir);
+
 				vec3 normal = normalize(vNormal.xyz);
 				vec3 viewNormal = normalize(vViewNormal.xyz);
-				vec3 viewDir = normalize(-vViewPosition);
-				vec3 halfVec = normalize(viewDir + u_viewLightDir);
-				float diffuse = max(dot(normalize(u_lightDir), normal), 0.0);
+				vec3 viewDir = normalize(-viewPosition);
+				vec3 halfVec = normalize(viewDir + viewLightDir);
+				float diffuse = max(dot(normalize(viewLightDir), viewNormal), 0.0);
 
-				float NoL= max(dot(viewNormal, u_viewLightDir), 0.0);
+				float NoL= max(dot(viewNormal, viewLightDir), 0.0);
 				float NoV= max(dot(viewNormal, viewDir), 0.0);
 				float NoH = max(dot(viewNormal, halfVec), 0.0);
 
@@ -188,18 +218,25 @@
 
 				float fresnel = pow((1.0 - u_fresnel) / (1.0 + u_fresnel), 2.0);
 
-				float fresnel_fn = F(fresnel, u_viewLightDir, halfVec);
+				float fresnel_fn = F(fresnel, viewLightDir, halfVec);
 				/*Put M_PI/4.0 in to NDF functions*/
 				float ndf_fn = N(alpha, viewNormal, halfVec, NoH);
 				/*Put /(NoL*NoV) in G funtion*/
-				float g_fn = G(alpha, u_viewLightDir, viewDir, halfVec, viewNormal, NoL, NoV);
+				float g_fn = G(alpha, viewLightDir, viewDir, halfVec, viewNormal, NoL, NoV);
 
 				float brdf_spec = fresnel_fn * ndf_fn * g_fn;
 
 				vec3 tColor = texture2D(u_texture, vUv).xyz;
 
-				vec3 specColor = brdf_spec * u_lightColor * NoL;
-				vec3 diffuseColor = tColor * diffuse * (1.0 - fresnel_fn) * u_lightColor;
+				calDirLight(vec3(0.0, -1.0, 0.0), viewNormal, tColor, vec3(1.0));
+				calDirLight(vec3(0.0, 0.0, -1.0), viewNormal, tColor, vec3(1.0));
+				calDirLight(vec3(-1.0, 0.0, 0.0), viewNormal, tColor, vec3(1.0));
+				calDirLight(vec3(0.0, 0.0, 1.0), viewNormal, tColor, vec3(1.0));
+				calDirLight(vec3(1.0, 0.0, 0.0), viewNormal, tColor, vec3(1.0));
+
+
+				vec3 specColor = brdf_spec * u_lightColor * NoL + dirSpecular;
+				vec3 diffuseColor = tColor * diffuse * (1.0 - fresnel_fn) * u_lightColor + dirDiffuse;
 
 				//gl_FragColor = vec4(vec3(brdf_spec, brdf_spec, brdf_spec), 1.0);
 				gl_FragColor = vec4( diffuseColor +  specColor + u_ambientColor * tColor, 1.0);
