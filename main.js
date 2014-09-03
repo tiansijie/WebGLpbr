@@ -50,6 +50,8 @@ function init() {
   light.position.set( 5, 5, 5 );
   scene.add(light);
 
+  var cubeMapTex = initiCubeMap();
+
   var boxGeo = new THREE.BoxGeometry(1,1,1);
 
   material = new THREE.ShaderMaterial( {
@@ -65,6 +67,7 @@ function init() {
       u_fresnel: {type: "f", value: propertyGUI.fresnel },
       u_alpha: {type: "f", value: propertyGUI.roughness * propertyGUI.roughness },
       //u_texture: {type: "t", value: null },
+      u_tCube: {type: "t", value: cubeMapTex }
     },
     vertexShader: document.getElementById( 'vertexShader' ).textContent,
     fragmentShader: currentFragShader,
@@ -75,11 +78,13 @@ function init() {
   var loader = new THREE.JSONLoader();
 
   loader.load('./objects/bunny.json', function(geometry, materials) {
-
       var mesh = new THREE.Mesh(geometry, material);
       scene.add(mesh);
   });
 
+
+  // var sphereMesh = new THREE.Mesh(new THREE.SphereGeometry( 1, 32, 32 ), material);
+  // scene.add(sphereMesh);
 
   //var boxMaterial = new THREE.MeshNormalMaterial( {color:new THREE.Color('rgb(1,0.4,1)'), shading: THREE.SmoothShading } );
   //var boxMesh = new THREE.Mesh(boxGeo, boxMaterial);
@@ -88,7 +93,7 @@ function init() {
   //var mesh = new THREE.Mesh(boxGeo, material);
   //scene.add(mesh);
 
-  initiCubeMap();
+
 
   renderer = new THREE.WebGLRenderer();
   renderer.setClearColor( 0xffffff, 1 );
@@ -207,4 +212,6 @@ function initiCubeMap() {
   skyboxMesh = new THREE.Mesh( new THREE.BoxGeometry( 200, 200, 200 ), material );
   // add it to the scene
   scene.add( skyboxMesh );
+
+  return textureCube;
 }
