@@ -20,6 +20,10 @@ var BRDFFragmentShader = {};
 
 var currentFragShader;
 
+var stats = new Stats();
+stats.setMode( 0 );
+//document.body.appendChild( stats.domElement );
+
 init();
 animate();
 
@@ -33,7 +37,7 @@ function init() {
   container = document.getElementById('container');
   document.body.appendChild(container);
 
-  camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 500 );
+  camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 1500 );
   camera.position.z = 2;
   camera.position.x = 1;
   camera.lightDir = new THREE.Vector3(1,1,1);
@@ -74,22 +78,17 @@ function init() {
 
       var mesh = new THREE.Mesh(geometry, material);
       scene.add(mesh);
-      //debugger;
-      // for(var i = 0; i < 2; ++i) {
-      //   var objMaterial = material.clone();
-      //   objMaterial.uniforms['u_texture'].value = materials[i].map
-      //   var mesh = new THREE.Mesh(geometry, objMaterial);
-      //   scene.add(mesh);
-      // }
   });
 
 
-  var boxMaterial = new THREE.MeshNormalMaterial( {color:new THREE.Color('rgb(1,0.4,1)'), shading: THREE.SmoothShading } );
-  var boxMesh = new THREE.Mesh(boxGeo, boxMaterial);
+  //var boxMaterial = new THREE.MeshNormalMaterial( {color:new THREE.Color('rgb(1,0.4,1)'), shading: THREE.SmoothShading } );
+  //var boxMesh = new THREE.Mesh(boxGeo, boxMaterial);
   //scene.add(boxMesh);
 
-  var mesh = new THREE.Mesh(boxGeo, material);
+  //var mesh = new THREE.Mesh(boxGeo, material);
   //scene.add(mesh);
+
+  initiCubeMap();
 
   renderer = new THREE.WebGLRenderer();
   renderer.setClearColor( 0xffffff, 1 );
@@ -97,13 +96,9 @@ function init() {
   container.appendChild( renderer.domElement );
 
   controller = new THREE.OrbitControls(camera, renderer.domElement);
-  // stats = new Stats();
-  // stats.domElement.style.position = 'absolute';
-  // stats.domElement.style.top = '0px';
-  // stats.domElement.style.zIndex = 100;
-  // container.appendChild( stats.domElement );
 
   window.addEventListener( 'resize', onWindowResize, false );
+
 
 }
 
@@ -124,7 +119,6 @@ function onWindowResize() {
 function animate() {
 
   requestAnimationFrame( animate );
-  //controller.update();
 
   render();
   //stats.update();
@@ -144,9 +138,7 @@ function animate() {
 }
 
 function render() {
-
   renderer.render( scene, camera );
-  //debugger;
 }
 
 function property() {
@@ -191,4 +183,28 @@ function initShader() {
 function updateCamera() {
   camera.viewLightDir = new THREE.Vector4(camera.lightDir.x, camera.lightDir.y, camera.lightDir.z, 0.0).applyMatrix4(camera.matrixWorldInverse);
   camera.viewLightDir.normalize();
+}
+
+function initiCubeMap() {
+  var urlPrefix = "/~sijietian/pbr/cubemap/";
+  var urls = [ urlPrefix + "posx.jpg", urlPrefix + "negx.jpg",
+    urlPrefix + "posy.jpg", urlPrefix + "negy.jpg",
+    urlPrefix + "posz.jpg", urlPrefix + "negz.jpg" ];
+  var textureCube = THREE.ImageUtils.loadTextureCube( urls );
+  textureCube.format = THREE.RGBFormat;
+
+  var shader = THREE.ShaderLib["cube"];
+  shader.uniforms['tCube'].value = textureCube;   // textureCube has been init before
+  var material = new THREE.ShaderMaterial({
+    fragmentShader    : shader.fragmentShader,
+    vertexShader  : shader.vertexShader,
+    uniforms  : shader.uniforms,
+    depthWrite: false,
+		side: THREE.BackSide
+  });
+
+  // build the skybox Mesh
+  skyboxMesh = new THREE.Mesh( new THREE.BoxGeometry( 200, 200, 200 ), material );
+  // add it to the scene
+  scene.add( skyboxMesh );
 }

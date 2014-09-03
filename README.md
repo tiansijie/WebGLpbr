@@ -13,3 +13,7 @@ http://www.gamedev.net/topic/638197-cook-torrance-brdf-general/
 http://www.gamingfreedom.org/content/21/14-cook-torrance.pdf
 
 http://lousodrome.net/blog/light/tag/physically-based-rendering/page/2/
+
+http://www.humus.name/index.php?page=Textures
+
+http://antongerdelan.net/opengl/cubemaps.html
