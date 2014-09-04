@@ -17,3 +17,7 @@ http://lousodrome.net/blog/light/tag/physically-based-rendering/page/2/
 http://www.humus.name/index.php?page=Textures
 
 http://antongerdelan.net/opengl/cubemaps.html
+
+http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
+
+http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf

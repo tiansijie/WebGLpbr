@@ -250,7 +250,7 @@
 				vec3 diffuseColor = u_diffuseColor * diffuse * (1.0 - fresnel_fn) * u_lightColor + dirDiffuse;
 
 				//gl_FragColor = vec4(vec3(brdf_spec, brdf_spec, brdf_spec), 1.0);
-				gl_FragColor = vec4( diffuseColor +  specColor + u_ambientColor * u_diffuseColor * cubeMapColor, 1.0);
+				gl_FragColor = vec4( diffuseColor +  specColor + u_ambientColor * u_diffuseColor + (1.0-u_roughness) * cubeMapColor, 1.0);
 
 				//gl_FragColor = vec4( cubeMapColor, 1.0 );
 			}

@@ -77,7 +77,7 @@ function init() {
 
   var loader = new THREE.JSONLoader();
 
-  loader.load('./objects/bunny.json', function(geometry, materials) {
+  loader.load('./objects/dragon.json', function(geometry, materials) {
       var mesh = new THREE.Mesh(geometry, material);
       scene.add(mesh);
   });
