@@ -51,10 +51,12 @@ function init() {
       u_lightColor: { type: "v3", value: new THREE.Vector3(light.color.r, light.color.g, light.color.b)  },
       u_lightPos: { type: "v3", value: light.position},
       u_ambientColor: {type: "v3", value: new THREE.Vector3(0.1, 0.1, 0.1)},
+      u_diffuseColor: {type: 'v3', value: new THREE.Vector3(1,1,1) },
       u_roughness: {type: "f", value: 0.0 },
       u_fresnel: {type: "f", value: 0.0 },
       u_alpha: {type: "f", value: 0.0 },
       u_texture: {type: "t", value: null },
+      u_isTexture: {type: "i", value: 0 },
     },
     vertexShader: document.getElementById( 'vertexShader' ).textContent,
     fragmentShader: currentFragShader,
@@ -64,12 +66,17 @@ function init() {
 
   var loader = new THREE.JSONLoader();
 
-  loader.load('./objects/banquet.json', function(geometry, materials) {
+  loader.load('./objects/woodchair.json', function(geometry, materials) {
 
       for(var i = 0; i < materials.length; ++i) {
         var mat = materials[i];
         materials[i] = material.clone();
-        materials[i].uniforms['u_texture'].value = mat.map;
+        if(mat.map) {
+          materials[i].uniforms['u_texture'].value = mat.map;
+          materials[i].uniforms['u_isTexture'].value = 1;
+        }
+        materials[i].uniforms['u_diffuseColor'].value = mat.color;
+        //materials[i] = new THREE.MeshPhongMaterial({map: mat.map, shininess: 150});
       }
 
       mats = materials;
