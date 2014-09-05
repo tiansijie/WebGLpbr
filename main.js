@@ -15,6 +15,9 @@ var propertyGUI;
 
 var material;
 
+var Hu = [];
+var Hv = [];
+var SAMPLE = 16;
 
 var BRDFFragmentShader = {};
 
@@ -54,6 +57,12 @@ function init() {
 
   var boxGeo = new THREE.BoxGeometry(1,1,1);
 
+  for( var i = 0; i < SAMPLE; i++ ) {
+    Hu.push(i/SAMPLE);
+    Hv.push(radicalInverse_VdC(i));
+  }
+
+
   material = new THREE.ShaderMaterial( {
     uniforms: {
       u_lightColor: { type: "v3", value: new THREE.Vector3(light.color.r, light.color.g, light.color.b)  },
@@ -67,7 +76,10 @@ function init() {
       u_fresnel: {type: "f", value: propertyGUI.fresnel },
       u_alpha: {type: "f", value: propertyGUI.roughness * propertyGUI.roughness },
       //u_texture: {type: "t", value: null },
-      u_tCube: {type: "t", value: cubeMapTex }
+      u_tCube: {type: "t", value: cubeMapTex },
+      u_Hu: {type: "t", value: Hu},
+      u_Hv: {type: "t", value: Hv},
+      u_sample: {type: 'i', value: SAMPLE}
     },
     vertexShader: document.getElementById( 'vertexShader' ).textContent,
     fragmentShader: currentFragShader,
@@ -77,23 +89,14 @@ function init() {
 
   var loader = new THREE.JSONLoader();
 
-  loader.load('./objects/dragon.json', function(geometry, materials) {
+  loader.load('./objects/bunny.json', function(geometry, materials) {
       var mesh = new THREE.Mesh(geometry, material);
-      scene.add(mesh);
+  //    scene.add(mesh);
   });
 
 
-  // var sphereMesh = new THREE.Mesh(new THREE.SphereGeometry( 1, 32, 32 ), material);
-  // scene.add(sphereMesh);
-
-  //var boxMaterial = new THREE.MeshNormalMaterial( {color:new THREE.Color('rgb(1,0.4,1)'), shading: THREE.SmoothShading } );
-  //var boxMesh = new THREE.Mesh(boxGeo, boxMaterial);
-  //scene.add(boxMesh);
-
-  //var mesh = new THREE.Mesh(boxGeo, material);
-  //scene.add(mesh);
-
-
+  var sphereMesh = new THREE.Mesh(new THREE.SphereGeometry( 1, 32, 32 ), material);
+  scene.add(sphereMesh);
 
   renderer = new THREE.WebGLRenderer();
   renderer.setClearColor( 0xffffff, 1 );
@@ -119,7 +122,6 @@ function onWindowResize() {
 
 }
 
-//
 
 function animate() {
 
@@ -214,4 +216,20 @@ function initiCubeMap() {
   scene.add( skyboxMesh );
 
   return textureCube;
+}
+
+
+
+function radicalInverse_VdC(bit) {
+  bit=(bit<<16|bit>>>16)>>>0;
+  bit=((bit&1431655765)<<1|(bit&2863311530)>>>1)>>>0;
+  bit=((bit&858993459)<<2|(bit&3435973836)>>>2)>>>0;
+  bit=((bit&252645135)<<4|(bit&4042322160)>>>4)>>>0;
+  return(((bit&16711935)<<8|(bit&4278255360)>>>8)>>>0)/4294967296
+}
+
+
+function hammersley2d(i, N) {
+  //return {i/N, radicalInverse_VdC(i)};
+  return i/N;
 }
