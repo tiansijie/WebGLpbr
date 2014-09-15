@@ -21,3 +21,7 @@ http://antongerdelan.net/opengl/cubemaps.html
 http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
 
 http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
+
+http://www.rorydriscoll.com/2009/01/07/better-sampling/
+
+http://www.iquilezles.org/www/index.htm

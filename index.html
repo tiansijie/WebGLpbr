@@ -18,10 +18,10 @@
 	<body>
 
 		<div id="container" style="width: 100%; height: 100%;"></div>
-		<script src="/~sijietian/pbr/threejs/build/three.js"></script>
-		<script src="/~sijietian/pbr/threejs/controls/OrbitControls.js"></script>
-		<script type="text/javascript" src="/~sijietian/pbr/dat.gui.min.js"></script>
-		<script src="/~sijietian/pbr/stats.min.js"></script>
+		<script src="./threejs/build/three.js"></script>
+		<script src="./threejs/controls/OrbitControls.js"></script>
+		<script type="text/javascript" src="./dat.gui.min.js"></script>
+		<script src="./stats.min.js"></script>
 
 		<script id="vertexShader" type="x-shader/x-vertex">
 
@@ -64,15 +64,16 @@
 			uniform vec3 u_ambientColor;
 			uniform sampler2D u_texture;
 			uniform samplerCube u_tCube;
-			uniform sampler2D u_Hu;
-			uniform sampler2D u_Hv;
 			uniform int u_sample;
+			uniform float u_time;
+
 
 			varying vec4 vPosition;
 			varying vec3 vViewPosition;
 			varying vec4 vNormal;
 			varying vec3 vViewNormal;
 			varying vec2 vUv;
+
 
 			#define M_PI 3.1415926535897932384626433832795
 
@@ -181,12 +182,14 @@
 
 
 		<script id="fragmentShader_main" type="x-shader/x-fragment">
+			float random(vec3 scale, float seed) {
+				return fract(sin(dot(gl_FragCoord.xyz + seed, scale)) * 43758.5453 + seed);
+			}
 
-			vec2 Hammersley(int i) {
-				vec3 color = texture2D(u_Hu, vec2(0.0)).xyz;
-				//return (texture2D(u_Hu, vec2(0.0)).x, texture2D(u_Hv, vec2(0.0).y));
-				return vec2(0.0);
-				//return vec2(u_Hu[0], u_Hv[0]);
+			vec2 RandomSamples(float seed) {
+				float u = random(vec3(12.9898, 78.233, 151.7182), seed);
+				float v = random(vec3(63.7264, 10.873, 623.6736), seed);
+				return vec2(u, v);
 			}
 
 			vec3 ImportanceSampleGGX( vec2 Xi, float Roughness, vec3 N ) {
@@ -198,41 +201,44 @@
 				H.x = SinTheta * cos( Phi );
 				H.y = SinTheta * sin( Phi );
 				H.z = CosTheta;
-				vec3 UpVector = abs(N.z) < 0.999 ? vec3(0.0,0.0,1.0) : vec3(1.0,0.0,0.0);
-				vec3 TangentX = normalize( cross( UpVector, N ) );
-				vec3 TangentY = cross( N, TangentX );
-				// Tangent to world space
-				return TangentX * H.x + TangentY * H.y + N * H.z;
+				return H;
 			}
 
 
-			vec3 SpecularIBL( vec3 SpecularColor , float Roughness, vec3 N, vec3 V )
+			vec3 SpecularIBL( float Roughness, vec3 NL, vec3 V, float fresnel )
 			{
+				//L: viewLightDir
+				//H: halfVector
+				//V: viewNormal
+				//V: viewDir
+
 				vec3 SpecularLighting = vec3(0.0);
-				const int NumSamples = 1024;
+				const int NumSamples = 32;
 				for( int i = 0; i < NumSamples; i++ )
 				{
-					vec2 Xi = Hammersley( i, NumSamples );
-					vec3 H = ImportanceSampleGGX( Xi, Roughness, N );
+					vec2 Xi = RandomSamples( u_time + float(i) );
+					vec3 H = ImportanceSampleGGX( Xi, Roughness, NL );
 					vec3 L = 2.0 * dot( V, H ) * H - V;
-					float NoV = max( dot( N, V ), 0.0 );
-					float NoL = max( dot( N, L ), 0.0 );
-					float NoH = max( dot( N, H ), 0.0 );
+					float NoV = max( dot( NL, V ), 0.0 );
+					float NoL = max( dot( NL, L ), 0.0 );
+					float NoH = max( dot( NL, H ), 0.0 );
 					float VoH = max( dot( V, H ), 0.0 );
+
 
 					if( NoL > 0.0 )
 					{
-						vec3 SampleColor = EnvMap.SampleLevel( EnvMapSampler , L, 0.0 ).rgb;
-						float G = G_Smith( Roughness, NoV, NoL );
-						float Fc = pow( 1.0 - VoH, 5.0 );
-						vec3 F = (1.0 - Fc) * SpecularColor + Fc;
-						// Incident light = SampleColor * NoL
-						// Microfacet specular = D*G*F / (4*NoL*NoV)
-						// pdf = D * NoH / (4 * VoH)
-						SpecularLighting += SampleColor * F * G * VoH / (NoH * NoV);
+						vec3 SampleColor = textureCube (u_tCube, L).xyz;
+
+						float fresnel_fn = F(fresnel, L, H);
+						/*Put M_PI/4.0 in to NDF functions*/
+						float ndf_fn = N(Roughness, NL, H, NoH);
+						/*Put /(NoL*NoV) in G funtion*/
+						float g_fn = G(Roughness, L, V, H, NL, NoL, NoV);
+
+						SpecularLighting += fresnel_fn * ndf_fn * g_fn * SampleColor;
 					}
 				}
-				return SpecularLighting / NumSamples;
+				return SpecularLighting / float(NumSamples);
 			}
 
 
@@ -279,20 +285,24 @@
 				float diffuse = max(dot(normalize(u_lightDir), normal), 0.0);
 
 				float NoL= max(dot(viewNormal, viewLightDir), 0.0);
-				float NoV= max(dot(viewNormal, viewDir), 0.0);
-				float NoH = max(dot(viewNormal, halfVec), 0.0);
-
-				float alpha = u_alpha;
-
+				// float NoV= max(dot(viewNormal, viewDir), 0.0);
+				// float NoH = max(dot(viewNormal, halfVec), 0.0);
+				//
+				// float alpha = u_alpha;
+				//
 				float fresnel = pow((1.0 - u_fresnel) / (1.0 + u_fresnel), 2.0);
 
 				float fresnel_fn = F(fresnel, viewLightDir, halfVec);
-				/*Put M_PI/4.0 in to NDF functions*/
-				float ndf_fn = N(alpha, viewNormal, halfVec, NoH);
-				/*Put /(NoL*NoV) in G funtion*/
-				float g_fn = G(alpha, viewLightDir, viewDir, halfVec, viewNormal, NoL, NoV);
+				// /*Put M_PI/4.0 in to NDF functions*/
+				// float ndf_fn = N(alpha, viewNormal, halfVec, NoH);
+				// /*Put /(NoL*NoV) in G funtion*/
+				// float g_fn = G(alpha, viewLightDir, viewDir, halfVec, viewNormal, NoL, NoV);
+				//
+				// float brdf_spec = fresnel_fn * ndf_fn * g_fn;
 
-				float brdf_spec = fresnel_fn * ndf_fn * g_fn;
+				vec3 specularColor = SpecularIBL(u_alpha, viewNormal, viewDir, fresnel);
+
+
 
 				//vec3 tColor = texture2D(u_texture, vUv).xyz;
 
@@ -302,11 +312,14 @@
 				// calDirLight(vec3(0.0, 0.0, 1.0), viewNormal, u_diffuseColor, vec3(1.0));
 				// calDirLight(vec3(1.0, 0.0, 0.0), viewNormal, u_diffuseColor, vec3(1.0));
 
+
+
+
 				vec3 reflected = reflect (vPosition.xyz - u_viewPos, normal);
 		///		reflected = vec3 (viewMatrix * vec4 (reflected, 0.0)).xyz;
 				vec3 cubeMapColor = textureCube (u_tCube, vec3(-reflected.x, reflected.y, reflected.z)).xyz;
 
-				vec3 specColor = brdf_spec * u_lightColor * NoL + dirSpecular;
+				vec3 specColor = specularColor * NoL;//brdf_spec * u_lightColor * NoL + dirSpecular;
 				vec3 diffuseColor = u_diffuseColor * diffuse * (1.0 - fresnel_fn) * u_lightColor + dirDiffuse;
 
 				//gl_FragColor = vec4(vec3(brdf_spec, brdf_spec, brdf_spec), 1.0);
@@ -315,7 +328,7 @@
 				//gl_FragColor = vec4( cubeMapColor, 1.0 );
 			}
 		</script>
-		<script type="text/javascript" src="/~sijietian/pbr/main.js"></script>
+		<script type="text/javascript" src="./main.js"></script>
 
 	</body>
 </html>

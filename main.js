@@ -23,6 +23,8 @@ var BRDFFragmentShader = {};
 
 var currentFragShader;
 
+var startTime = new Date();
+
 var stats = new Stats();
 stats.setMode( 0 );
 //document.body.appendChild( stats.domElement );
@@ -57,11 +59,6 @@ function init() {
 
   var boxGeo = new THREE.BoxGeometry(1,1,1);
 
-  for( var i = 0; i < SAMPLE; i++ ) {
-    Hu.push(i/SAMPLE);
-    Hv.push(radicalInverse_VdC(i));
-  }
-
 
   material = new THREE.ShaderMaterial( {
     uniforms: {
@@ -70,15 +67,13 @@ function init() {
       u_viewLightDir: { type: "v3", value: camera.viewLightDir },
       u_lightPos: { type: "v3", value: light.position},
       u_viewPos: {type: "v3", value: camera.position },
-      u_diffuseColor: {type: "v3", value: new THREE.Vector3(0.85, 0.56, 0.34)},
+      u_diffuseColor: {type: "v3", value: new THREE.Vector3(1.0, 1.0, 1.0)},
       u_ambientColor: {type: "v3", value: new THREE.Vector3(0.1, 0.1, 0.1)},
       u_roughness: {type: "f", value: propertyGUI.roughness },
       u_fresnel: {type: "f", value: propertyGUI.fresnel },
       u_alpha: {type: "f", value: propertyGUI.roughness * propertyGUI.roughness },
-      //u_texture: {type: "t", value: null },
       u_tCube: {type: "t", value: cubeMapTex },
-      u_Hu: {type: "t", value: Hu},
-      u_Hv: {type: "t", value: Hv},
+      u_time: {type: "f", value: 0.0},
       u_sample: {type: 'i', value: SAMPLE}
     },
     vertexShader: document.getElementById( 'vertexShader' ).textContent,
@@ -91,12 +86,12 @@ function init() {
 
   loader.load('./objects/bunny.json', function(geometry, materials) {
       var mesh = new THREE.Mesh(geometry, material);
-  //    scene.add(mesh);
+      scene.add(mesh);
   });
 
 
-  var sphereMesh = new THREE.Mesh(new THREE.SphereGeometry( 1, 32, 32 ), material);
-  scene.add(sphereMesh);
+  // var sphereMesh = new THREE.Mesh(new THREE.SphereGeometry( 1, 32, 32 ), material);
+  // scene.add(sphereMesh);
 
   renderer = new THREE.WebGLRenderer();
   renderer.setClearColor( 0xffffff, 1 );
@@ -106,7 +101,6 @@ function init() {
   controller = new THREE.OrbitControls(camera, renderer.domElement);
 
   window.addEventListener( 'resize', onWindowResize, false );
-
 
 }
 
@@ -134,6 +128,7 @@ function animate() {
   material.uniforms['u_alpha'].value = propertyGUI.roughness * propertyGUI.roughness;
   material.uniforms['u_fresnel'].value = propertyGUI.fresnel;
   material.uniforms['u_viewLightDir'].value = camera.viewLightDir;
+  material.uniforms['u_time'].value = (new Date() - startTime) * 0.001;
 
   currentFragShader = BRDFFragmentShader.init
   + BRDFFragmentShader.N[propertyGUI.Normal_Dirstribution_Function]
@@ -193,7 +188,11 @@ function updateCamera() {
 }
 
 function initiCubeMap() {
-  var urlPrefix = "/~sijietian/pbr/cubemap/";
+  var local = "/~sijietian/pbr/";
+  var remote = "./"
+  //var urlPrefix = local + "cubemap/";
+  var urlPrefix = remote + "cubemap/";
+  
   var urls = [ urlPrefix + "posx.jpg", urlPrefix + "negx.jpg",
     urlPrefix + "posy.jpg", urlPrefix + "negy.jpg",
     urlPrefix + "posz.jpg", urlPrefix + "negz.jpg" ];
@@ -216,20 +215,4 @@ function initiCubeMap() {
   scene.add( skyboxMesh );
 
   return textureCube;
-}
-
-
-
-function radicalInverse_VdC(bit) {
-  bit=(bit<<16|bit>>>16)>>>0;
-  bit=((bit&1431655765)<<1|(bit&2863311530)>>>1)>>>0;
-  bit=((bit&858993459)<<2|(bit&3435973836)>>>2)>>>0;
-  bit=((bit&252645135)<<4|(bit&4042322160)>>>4)>>>0;
-  return(((bit&16711935)<<8|(bit&4278255360)>>>8)>>>0)/4294967296
-}
-
-
-function hammersley2d(i, N) {
-  //return {i/N, radicalInverse_VdC(i)};
-  return i/N;
 }
