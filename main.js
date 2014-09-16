@@ -124,19 +124,9 @@ function animate() {
   render();
   //stats.update();
   updateCamera();
-  material.uniforms['u_roughness'].value = propertyGUI.roughness;
-  material.uniforms['u_alpha'].value = propertyGUI.roughness * propertyGUI.roughness;
-  material.uniforms['u_fresnel'].value = propertyGUI.fresnel;
+
   material.uniforms['u_viewLightDir'].value = camera.viewLightDir;
   material.uniforms['u_time'].value = (new Date() - startTime) * 0.001;
-
-  currentFragShader = BRDFFragmentShader.init
-  + BRDFFragmentShader.N[propertyGUI.Normal_Dirstribution_Function]
-  + BRDFFragmentShader.G[propertyGUI.Geometric_Shadowing]
-  + BRDFFragmentShader.main;
-
-  material.fragmentShader = currentFragShader;
-  material.needsUpdate = true;
 }
 
 function render() {
@@ -148,14 +138,59 @@ function property() {
   this.fresnel = 10.0;
   this.Normal_Dirstribution_Function = 'BlinnPhong';
   this.Geometric_Shadowing = 'CookTorrance';
+  this.Cube_Map_Name = 'chapel/';
 }
 
 window.onload = function() {
+
+  function roughnessCallback(value) {
+    material.uniforms['u_roughness'].value = propertyGUI.roughness;
+    material.uniforms['u_alpha'].value = propertyGUI.roughness * propertyGUI.roughness;
+  }
+
+  function fresnelCallback(value) {
+    material.uniforms['u_fresnel'].value = propertyGUI.fresnel;
+  }
+
   var datGui = new dat.GUI();
-  datGui.add(propertyGUI, 'roughness', 0.01, 1.0);
-  datGui.add(propertyGUI, 'fresnel', 1.0, 20.0);
-  datGui.add(propertyGUI, 'Normal_Dirstribution_Function', ['BlinnPhong', 'Beckmann', 'GGX']);
-  datGui.add(propertyGUI, 'Geometric_Shadowing', ['Implicit', 'CookTorrance', 'Kelemen', 'Beckmann', 'Schlick_Beckmann']);
+  var roughnessController = datGui.add(propertyGUI, 'roughness', 0.01, 1.0);
+  roughnessController.onChange(roughnessCallback);
+  roughnessController.onFinishChange(roughnessCallback);
+
+  var fresnelController = datGui.add(propertyGUI, 'fresnel', 1.0, 20.0);
+  fresnelController.onChange(fresnelCallback);
+  fresnelController.onFinishChange(fresnelCallback);
+
+  var NDFController = datGui.add(propertyGUI, 'Normal_Dirstribution_Function', ['BlinnPhong', 'Beckmann', 'GGX']);
+  NDFController.onFinishChange(function(value){
+
+    currentFragShader = BRDFFragmentShader.init
+    + BRDFFragmentShader.N[propertyGUI.Normal_Dirstribution_Function]
+    + BRDFFragmentShader.G[propertyGUI.Geometric_Shadowing]
+    + BRDFFragmentShader.main;
+
+    material.fragmentShader = currentFragShader;
+    material.needsUpdate = true;
+
+  })
+
+  var GController = datGui.add(propertyGUI, 'Geometric_Shadowing', ['Implicit', 'CookTorrance', 'Kelemen', 'Beckmann', 'Schlick_Beckmann']);
+  GController.onFinishChange(function(value){
+    currentFragShader = BRDFFragmentShader.init
+    + BRDFFragmentShader.N[propertyGUI.Normal_Dirstribution_Function]
+    + BRDFFragmentShader.G[propertyGUI.Geometric_Shadowing]
+    + BRDFFragmentShader.main;
+
+    material.fragmentShader = currentFragShader;
+    material.needsUpdate = true;
+  })
+
+
+  var cubeMapController = datGui.add(propertyGUI, 'Cube_Map_Name', ['chapel', 'beach', 'church']);
+  cubeMapController.onFinishChange(function(value) {
+    var cubeMapTex = initiCubeMap();
+    material.uniforms.u_tCube = cubeMapTex;
+  });
 }
 
 
@@ -188,11 +223,10 @@ function updateCamera() {
 }
 
 function initiCubeMap() {
-  var local = "/~sijietian/pbr/";
-  var remote = "./"
-  //var urlPrefix = local + "cubemap/";
-  var urlPrefix = remote + "cubemap/";
-  
+
+  var urlPrefix = "./cubemap/";
+  urlPrefix += propertyGUI.Cube_Map_Name + '/';
+
   var urls = [ urlPrefix + "posx.jpg", urlPrefix + "negx.jpg",
     urlPrefix + "posy.jpg", urlPrefix + "negy.jpg",
     urlPrefix + "posz.jpg", urlPrefix + "negz.jpg" ];
