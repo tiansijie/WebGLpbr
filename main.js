@@ -27,7 +27,9 @@ var startTime = new Date();
 
 var stats = new Stats();
 stats.setMode( 0 );
-//document.body.appendChild( stats.domElement );
+stats.domElement.style.position = 'absolute';
+stats.domElement.style.left = '0px';
+stats.domElement.style.top = '0px';
 
 init();
 animate();
@@ -40,7 +42,9 @@ function init() {
   initShader();
 
   container = document.getElementById('container');
+  container.appendChild( stats.domElement );
   document.body.appendChild(container);
+
 
   camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 1500 );
   camera.position.z = 2;
@@ -67,7 +71,7 @@ function init() {
       u_viewLightDir: { type: "v3", value: camera.viewLightDir },
       u_lightPos: { type: "v3", value: light.position},
       u_viewPos: {type: "v3", value: camera.position },
-      u_diffuseColor: {type: "v3", value: new THREE.Vector3(1.0, 1.0, 1.0)},
+      u_diffuseColor: {type: "v3", value: new THREE.Vector3(0.9, 0.9, 0.9)},
       u_ambientColor: {type: "v3", value: new THREE.Vector3(0.1, 0.1, 0.1)},
       u_roughness: {type: "f", value: propertyGUI.roughness },
       u_fresnel: {type: "f", value: propertyGUI.fresnel },
@@ -122,7 +126,7 @@ function animate() {
   requestAnimationFrame( animate );
 
   render();
-  //stats.update();
+  stats.update();
   updateCamera();
 
   material.uniforms['u_viewLightDir'].value = camera.viewLightDir;
@@ -189,7 +193,7 @@ window.onload = function() {
   var cubeMapController = datGui.add(propertyGUI, 'Cube_Map_Name', ['chapel', 'beach', 'church']);
   cubeMapController.onFinishChange(function(value) {
     var cubeMapTex = initiCubeMap();
-    material.uniforms.u_tCube = cubeMapTex;
+    material.uniforms.u_tCube.value = cubeMapTex;
   });
 }
 

@@ -285,47 +285,17 @@
 				float diffuse = max(dot(normalize(u_lightDir), normal), 0.0);
 
 				float NoL= max(dot(viewNormal, viewLightDir), 0.0);
-				// float NoV= max(dot(viewNormal, viewDir), 0.0);
-				// float NoH = max(dot(viewNormal, halfVec), 0.0);
-				//
-				// float alpha = u_alpha;
-				//
+
 				float fresnel = pow((1.0 - u_fresnel) / (1.0 + u_fresnel), 2.0);
 
 				float fresnel_fn = F(fresnel, viewLightDir, halfVec);
-				// /*Put M_PI/4.0 in to NDF functions*/
-				// float ndf_fn = N(alpha, viewNormal, halfVec, NoH);
-				// /*Put /(NoL*NoV) in G funtion*/
-				// float g_fn = G(alpha, viewLightDir, viewDir, halfVec, viewNormal, NoL, NoV);
-				//
-				// float brdf_spec = fresnel_fn * ndf_fn * g_fn;
 
 				vec3 specularColor = SpecularIBL(u_alpha, viewNormal, viewDir, fresnel);
 
-
-
-				//vec3 tColor = texture2D(u_texture, vUv).xyz;
-
-				// calDirLight(vec3(0.0, -1.0, 0.0), viewNormal, u_diffuseColor, vec3(1.0));
-				// calDirLight(vec3(0.0, 0.0, -1.0), viewNormal, u_diffuseColor, vec3(1.0));
-				// calDirLight(vec3(-1.0, 0.0, 0.0), viewNormal, u_diffuseColor, vec3(1.0));
-				// calDirLight(vec3(0.0, 0.0, 1.0), viewNormal, u_diffuseColor, vec3(1.0));
-				// calDirLight(vec3(1.0, 0.0, 0.0), viewNormal, u_diffuseColor, vec3(1.0));
-
-
-
-
-				vec3 reflected = reflect (vPosition.xyz - u_viewPos, normal);
-		///		reflected = vec3 (viewMatrix * vec4 (reflected, 0.0)).xyz;
-				vec3 cubeMapColor = textureCube (u_tCube, vec3(-reflected.x, reflected.y, reflected.z)).xyz;
-
-				vec3 specColor = specularColor * NoL;//brdf_spec * u_lightColor * NoL + dirSpecular;
+				vec3 specColor = specularColor * NoL + dirSpecular;
 				vec3 diffuseColor = u_diffuseColor * diffuse * (1.0 - fresnel_fn) * u_lightColor + dirDiffuse;
 
-				//gl_FragColor = vec4(vec3(brdf_spec, brdf_spec, brdf_spec), 1.0);
 				gl_FragColor = vec4( diffuseColor +  specColor + u_ambientColor * u_diffuseColor, 1.0);
-
-				//gl_FragColor = vec4( cubeMapColor, 1.0 );
 			}
 		</script>
 		<script type="text/javascript" src="./main.js"></script>
