@@ -10,12 +10,24 @@
 				padding:0;
 				margin:0;
 				font-weight: bold;
-				overflow:hidden;
-			}
-		</style>
 
+				overflow:hidden;
+				text-align: center;
+			}
+			a { color: white }
+
+			#info { position: absolute; top: 10px; width: 100%; color: yellow;}
+		</style>
 	</head>
 	<body>
+		<div id="info">
+			<p>
+				Cube Map Texture by <a href="http://www.humus.name/index.php?page=Textures">Humus</a>
+			</p>
+			<p>
+				Check Out Source code on <a href="https://github.com/tiansijie/WebGLpbr">Sijie's Github</a>
+			</p>
+		</div>
 
 		<div id="container" style="width: 100%; height: 100%;"></div>
 		<script src="./threejs/build/three.js"></script>
