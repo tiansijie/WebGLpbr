@@ -54,7 +54,6 @@
 
 			uniform vec3 u_lightColor;
 			uniform vec3 u_lightDir;
-			uniform vec3 u_viewLightDir;
 			uniform vec3 u_lightPos;
 			uniform vec3 u_viewPos;
 			uniform vec3 u_diffuseColor;
@@ -271,7 +270,6 @@
 			void main()	{
 		//		viewMatrix
 		//		cameraPosition
-		//		vec3 normal = normalize(vNormal.xyz);
 				vec3 viewPosition = normalize(vViewPosition);
 
 				vec4 viewLightPos = viewMatrix * vec4( u_lightPos, 1.0 );
@@ -282,7 +280,7 @@
 				vec3 viewNormal = normalize(vViewNormal.xyz);
 				vec3 viewDir = normalize(-vViewPosition);
 				vec3 halfVec = normalize(viewDir + viewLightDir);
-				float diffuse = max(dot(normalize(u_lightDir), normal), 0.0);
+				float diffuse = max(dot(normalize(-u_lightDir), normal), 0.0);
 
 				float NoL= max(dot(viewNormal, viewLightDir), 0.0);
 
@@ -295,7 +293,7 @@
 				vec3 specColor = specularColor * NoL + dirSpecular;
 				vec3 diffuseColor = u_diffuseColor * diffuse * (1.0 - fresnel_fn) * u_lightColor + dirDiffuse;
 
-				gl_FragColor = vec4( diffuseColor +  specColor + u_ambientColor * u_diffuseColor, 1.0);
+				gl_FragColor = vec4( diffuseColor + specColor + u_ambientColor * u_diffuseColor, 1.0);
 			}
 		</script>
 		<script type="text/javascript" src="./main.js"></script>

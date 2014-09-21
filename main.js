@@ -49,14 +49,13 @@ function init() {
   camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 1500 );
   camera.position.z = 2;
   camera.position.x = 1;
-  camera.lightDir = new THREE.Vector3(1,1,1);
+  camera.lightDir = new THREE.Vector3(-1,-1,-1);
   camera.lightDir.normalize();
-  updateCamera();
 
   scene = new THREE.Scene();
 
   var light = new THREE.PointLight( 0xffffff, 1, 100 );
-  light.position.set( 5, 5, 5 );
+  light.position.set( 10, 10, 10 );
   scene.add(light);
 
   var cubeMapTex = initiCubeMap();
@@ -68,7 +67,6 @@ function init() {
     uniforms: {
       u_lightColor: { type: "v3", value: new THREE.Vector3(light.color.r, light.color.g, light.color.b)  },
       u_lightDir: { type: "v3", value: camera.lightDir },
-      u_viewLightDir: { type: "v3", value: camera.viewLightDir },
       u_lightPos: { type: "v3", value: light.position},
       u_viewPos: {type: "v3", value: camera.position },
       u_diffuseColor: {type: "v3", value: new THREE.Vector3(0.9, 0.9, 0.9)},
@@ -127,9 +125,7 @@ function animate() {
 
   render();
   stats.update();
-  updateCamera();
 
-  material.uniforms['u_viewLightDir'].value = camera.viewLightDir;
   material.uniforms['u_time'].value = (new Date() - startTime) * 0.001;
 }
 
@@ -221,10 +217,6 @@ function initShader() {
   + BRDFFragmentShader.main;
 }
 
-function updateCamera() {
-  camera.viewLightDir = new THREE.Vector4(camera.lightDir.x, camera.lightDir.y, camera.lightDir.z, 0.0).applyMatrix4(camera.matrixWorldInverse);
-  camera.viewLightDir.normalize();
-}
 
 function initiCubeMap() {
 
