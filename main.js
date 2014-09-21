@@ -15,9 +15,6 @@ var propertyGUI;
 
 var material;
 
-var Hu = [];
-var Hv = [];
-var SAMPLE = 16;
 
 var BRDFFragmentShader = {};
 
@@ -75,8 +72,7 @@ function init() {
       u_fresnel: {type: "f", value: propertyGUI.fresnel },
       u_alpha: {type: "f", value: propertyGUI.roughness * propertyGUI.roughness },
       u_tCube: {type: "t", value: cubeMapTex },
-      u_time: {type: "f", value: 0.0},
-      u_sample: {type: 'i', value: SAMPLE}
+      u_time: {type: "f", value: 0.0}
     },
     vertexShader: document.getElementById( 'vertexShader' ).textContent,
     fragmentShader: currentFragShader,
