@@ -1,27 +1,56 @@
-WebGLpbr
+WebGL Physical Based Shader
 ========
-http://simonstechblog.blogspot.com/2011/12/microfacet-brdf.html
+A physical based shader using three.js
 
-http://graphicrants.blogspot.ca/2013/08/specular-brdf-reference.html
+[Live Demo](http://sijietian.com/WebGL/pbr/)
 
-http://renderwonk.com/publications/s2010-shading-course/hoffman/s2010_physically_based_shading_hoffman_a_notes.pdf
+User can teak roughness and frenel value of the model.
 
-http://blog.selfshadow.com/publications/s2013-shading-course/
+Also you can switch different methods in the **Cook-Torrance microfacet specular BRDF**. 
 
-http://www.gamedev.net/topic/638197-cook-torrance-brdf-general/
+![Alt text](fu1.PNG "PBS function") 
 
-http://www.gamingfreedom.org/content/21/14-cook-torrance.pdf
+You also can play around the environment.
 
-http://lousodrome.net/blog/light/tag/physically-based-rendering/page/2/
+Screen Shots:
 
-http://www.humus.name/index.php?page=Textures
+![Alt text](ScreenShot11.PNG "s1")
 
-http://antongerdelan.net/opengl/cubemaps.html
+![Alt text](ScreenShot12.PNG "s1")
 
-http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
+![Alt text](ScreenShot13.PNG "s1") 
 
-http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
+![Alt text](ScreenShot2.PNG "s1")
 
-http://www.rorydriscoll.com/2009/01/07/better-sampling/
+**Mainly based on these resources**
 
-http://www.iquilezles.org/www/index.htm
+* http://graphicrants.blogspot.ca/2013/08/specular-brdf-reference.html
+
+* http://simonstechblog.blogspot.com/2011/12/microfacet-brdf.html
+
+* http://graphicrants.blogspot.ca/2013/08/specular-brdf-reference.html
+
+
+**Other resources:**
+
+* http://renderwonk.com/publications/s2010-shading-course/hoffman/s2010_physically_based_shading_hoffman_a_notes.pdf
+
+* http://blog.selfshadow.com/publications/s2013-shading-course/
+
+* http://www.gamedev.net/topic/638197-cook-torrance-brdf-general/
+
+* http://www.gamingfreedom.org/content/21/14-cook-torrance.pdf
+
+* http://lousodrome.net/blog/light/tag/physically-based-rendering/page/2/
+
+* http://www.humus.name/index.php?page=Textures
+
+* http://antongerdelan.net/opengl/cubemaps.html
+
+* http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
+
+* http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
+
+* http://www.rorydriscoll.com/2009/01/07/better-sampling/
+
+* http://www.iquilezles.org/www/index.htm
