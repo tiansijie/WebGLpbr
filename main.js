@@ -16,6 +16,12 @@ var propertyGUI;
 var material;
 
 
+// lights
+
+var numLights = 50;
+var lights = [];
+
+
 var BRDFFragmentShader = {};
 
 var currentFragShader;
@@ -55,7 +61,7 @@ function init() {
   light.position.set( 10, 10, 10 );
   scene.add(light);
 
-  var cubeMapTex = initiCubeMap();
+  var cubeMapTex;// = initiCubeMap();
 
   var boxGeo = new THREE.BoxGeometry(1,1,1);
 
@@ -82,24 +88,67 @@ function init() {
 
   var loader = new THREE.JSONLoader();
 
-  loader.load('./objects/bunny.json', function(geometry, materials) {
-      var mesh = new THREE.Mesh(geometry, material);
-      scene.add(mesh);
-  });
+  // loader.load('./objects/bunny.json', function(geometry, materials) {
+  //     var mesh = new THREE.Mesh(geometry, material);
+  //     scene.add(mesh);
+  // });
 
 
-  // var sphereMesh = new THREE.Mesh(new THREE.SphereGeometry( 1, 32, 32 ), material);
-  // scene.add(sphereMesh);
+  //var sphereMesh = new THREE.Mesh(new THREE.SphereGeometry( 1, 32, 32 ), material);
+  var sphereMesh = new THREE.Mesh(new THREE.SphereGeometry( 1, 32, 32 ), new THREE.MeshPhongMaterial());
+  scene.add(sphereMesh);
 
-  renderer = new THREE.WebGLRenderer();
-  renderer.setClearColor( 0xffffff, 1 );
-  renderer.setSize( window.innerWidth, window.innerHeight );
+  // renderer = new THREE.WebGLRenderer();
+  // renderer.setSize( window.innerWidth, window.innerHeight );
+  renderer = new THREE.WebGLDeferredRenderer( { width: window.innerWidth/2, height: window.innerHeight/2, brightness: 2} );
   container.appendChild( renderer.domElement );
 
   controller = new THREE.OrbitControls(camera, renderer.domElement);
 
   window.addEventListener( 'resize', onWindowResize, false );
 
+  initLights();
+
+}
+
+function initLights() {
+  var distance = 100;
+
+  // front light
+
+  var light = new THREE.PointLight( 0xffffff, 1.5, 1.5 * distance );
+  scene.add( light );
+  lights.push( light );
+
+  // random lights
+
+  var c = new THREE.Vector3();
+
+  for ( var i = 1; i < numLights; i ++ ) {
+
+    var light = new THREE.PointLight( 0xffffff, 2.0, distance );
+
+    c.set( Math.random(), Math.random(), Math.random() ).normalize();
+    light.color.setRGB( c.x, c.y, c.z );
+    light.position.set( Math.random() * 20 - 10, Math.random() * 20 - 10, Math.random() * 20 - 10 );
+    scene.add( light );
+    //lights.push( light );
+
+  }
+
+  // var geometry = new THREE.SphereGeometry( 0.7, 7, 7 );
+  //
+  // for ( var i = 0; i < numLights; i ++ ) {
+  //
+  //   var light = lights[ i ];
+  //
+  //   var material = new THREE.MeshBasicMaterial();
+  //   material.color = light.color;
+  //
+  //   var emitter = new THREE.Mesh( geometry, material );
+  //   light.add( emitter );
+  //
+  // }
 }
 
 function onWindowResize() {
@@ -238,7 +287,7 @@ function initiCubeMap() {
   // build the skybox Mesh
   skyboxMesh = new THREE.Mesh( new THREE.BoxGeometry( 200, 200, 200 ), material );
   // add it to the scene
-  scene.add( skyboxMesh );
+  //scene.add( skyboxMesh );
 
   return textureCube;
 }
