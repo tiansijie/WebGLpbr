@@ -215,6 +215,32 @@
 			 	return lightScatter * viewScatter * energyFactor ;
 			 }
 
+
+			float V_SmithGGXCorrelated ( float NdotL , float NdotV , float alphaG )
+			{
+				 // Original formulation of G_SmithGGX Correlated
+				 // lambda_v = ( -1 + sqrt ( alphaG2 * (1 - NdotL2 ) / NdotL2 + 1)) * 0.5 f;
+				 // lambda_l = ( -1 + sqrt ( alphaG2 * (1 - NdotV2 ) / NdotV2 + 1)) * 0.5 f;
+				 // G_SmithGGXCorrelated = 1 / (1 + lambda_v + lambda_l );
+				 // V_SmithGGXCorrelated = G_SmithGGXCorrelated / (4.0 f * NdotL * NdotV );
+
+				 // This is the optimize version
+				 float alphaG2 = alphaG * alphaG ;
+				 // Caution : the " NdotL *" and " NdotV *" are explicitely inversed , this is not a mistake .
+				 float Lambda_GGXV = NdotL * sqrt (( - NdotV * alphaG2 + NdotV ) * NdotV + alphaG2 );
+				 float Lambda_GGXL = NdotV * sqrt (( - NdotL * alphaG2 + NdotL ) * NdotL + alphaG2 );
+
+				 return 0.5 / ( Lambda_GGXV + Lambda_GGXL );
+			}
+
+			float D_GGX ( float NdotH , float m )
+			{
+				 // Divide by PI is apply later
+				 float m2 = m * m ;
+				 float f = ( NdotH * m2 - NdotH ) * NdotH + 1.0;
+				 return m2 / (f * f) ;
+			 }
+
 			vec2 RandomSamples(float seed) {
 				float u = random(vec3(12.9898, 78.233, 151.7182), seed);
 				float v = random(vec3(63.7264, 10.873, 623.6736), seed);
@@ -318,25 +344,34 @@
 				//float diffuse = max(dot(lightDir, normal), 0.0);
 				float fresnel = pow((1.0 - u_fresnel) / (1.0 + u_fresnel), 2.0);
 
-				// float diffuse =  fresnel / M_PI * (1.0 + pow(fd90(1.0-max(dot(lightDir, normal), 0.0), u_alpha), 5.0)) * ( 1.0 + pow(fd90(1.0-max(dot(normal, viewDir), 0.0), u_alpha), 5.0));
+				//float diffuse =  fresnel / M_PI * (1.0 + pow(fd90(1.0-max(dot(lightDir, normal), 0.0), u_alpha), 5.0)) * ( 1.0 + pow(fd90(1.0-max(dot(normal, viewDir), 0.0), u_alpha), 5.0));
 
 				//float NoL= max(dot(viewNormal, viewLightDir), 0.0);
 				//float NoL= max(dot(normal, lightDir), 0.0);
 				float NoV = max( dot( viewNormal, viewDir ), 0.0 ) + 1e-5;
 				float NoL = max( dot( viewNormal, viewLightDir ), 0.0 );
 				float LoH = max( dot( viewLightDir, halfVec ), 0.0 );
+				float NoH = max( dot( viewNormal, halfVec), 0.0);
 
-				float diffuse = Fr_DisneyDiffuse(NoV, NoL, LoH, u_roughness) / M_PI;
+				float diffuse = Fr_DisneyDiffuse(NoV, NoL, LoH, pow(u_roughness, 4.0)) / M_PI;
 
 
 				float fresnel_fn = F(fresnel, viewLightDir, halfVec);
 
-				vec3 specularColor = SpecularIBL(u_alpha, viewNormal, viewDir, fresnel);
+				vec3 fTerm = F_Schlick(vec3(1.0), fresnel, LoH);
+				float Vis = V_SmithGGXCorrelated(NoV, NoL, u_roughness);
+				float dTerm = D_GGX(NoH, u_roughness);
+				//vec3 specularColor = SpecularIBL(u_alpha, viewNormal, viewDir, fresnel);
+				vec3 specularColor = (fTerm * Vis * dTerm) / M_PI;//vec3(1.0);
+				//vec3 specularColor = vec3(1.0);
 
-				vec3 specColor = specularColor * NoL + dirSpecular;
-				vec3 diffuseColor = u_diffuseColor * diffuse * u_lightColor;// + dirDiffuse;
+				vec3 brdf = (diffuse* u_diffuseColor + specularColor) * NoL;
+				// vec3 specColor = specularColor;/// + dirSpecular;
+				// vec3 diffuseColor = u_diffuseColor * diffuse * u_lightColor;// + dirDiffuse;
 
-				gl_FragColor = vec4( diffuseColor + specColor + u_ambientColor * u_diffuseColor, 1.0);
+				// gl_FragColor = vec4( diffuseColor + specColor + u_ambientColor * u_diffuseColor, 1.0);
+
+				gl_FragColor = vec4(brdf * u_lightColor   + u_ambientColor * u_diffuseColor, 1.0);
 			}
 		</script>
 		<script type="text/javascript" src="./main.js"></script>

@@ -84,21 +84,21 @@ function loader() {
   for(var i = 1; i <= 10; i++) {
     var geometry = new THREE.SphereGeometry( 8, 32, 32 );
     var data = {map:null};
-    var material = setPBMaterial(data, i/15, 10, [0.9,0.2,0.5], 1);
+    var material = setPBMaterial(data, i/10, 0.5, [0.9,0.2,0.2], 1);
     var sphere = new THREE.Mesh( geometry, material );
     sphere.position.x = (i-6) * 20;
     scene.add( sphere );
   }
 
-  for(var i = 1; i <= 10; i++) {
-    var geometry = new THREE.SphereGeometry( 8, 32, 32 );
-    var data = {map:null};
-    var material = setPBMaterial(data, 0.5, i*2, [0.9,0.2,0.5], 1);
-    var sphere = new THREE.Mesh( geometry, material );
-    sphere.position.x = (i-6) * 20;
-    sphere.position.y = 20;
-    scene.add( sphere );
-  }
+  // for(var i = 1; i <= 10; i++) {
+  //   var geometry = new THREE.SphereGeometry( 8, 32, 32 );
+  //   var data = {map:null};
+  //   var material = setPBMaterial(data, 0.5, i*2, [0.9,0.2,0.5], 1);
+  //   var sphere = new THREE.Mesh( geometry, material );
+  //   sphere.position.x = (i-6) * 20;
+  //   sphere.position.y = 20;
+  //   scene.add( sphere );
+  // }
 }
 
 
@@ -124,7 +124,7 @@ function init() {
   scene = new THREE.Scene();
 
   light = new THREE.PointLight( 0xffffff, 1, 100 );
-  light.position.set( 0, 0, 10 );
+  light.position.set( 0, 0, 100 );
   scene.add(light);
 
   cubeMapTex = initiCubeMap();
