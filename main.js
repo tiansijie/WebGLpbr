@@ -15,6 +15,10 @@ var propertyGUI;
 
 var material;
 
+var light;
+var cubeMapTex;
+var boxGeo;
+
 
 var BRDFFragmentShader = {};
 
@@ -32,35 +36,15 @@ init();
 animate();
 
 
-function init() {
-
-  propertyGUI = new property();
-
-  initShader();
-
-  container = document.getElementById('container');
-  container.appendChild( stats.domElement );
-  document.body.appendChild(container);
 
 
-  camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 1500 );
-  camera.position.z = 2;
-  camera.position.x = 1;
-  camera.lightDir = new THREE.Vector3(-1,-1,-1);
-  camera.lightDir.normalize();
-
-  scene = new THREE.Scene();
-
-  var light = new THREE.PointLight( 0xffffff, 1, 100 );
-  light.position.set( 10, 10, 10 );
-  scene.add(light);
-
-  var cubeMapTex = initiCubeMap();
-
-  var boxGeo = new THREE.BoxGeometry(1,1,1);
 
 
-  material = new THREE.ShaderMaterial( {
+
+var pbShader;
+function loader() {
+
+  pbShader = new THREE.ShaderMaterial( {
     uniforms: {
       u_lightColor: { type: "v3", value: new THREE.Vector3(light.color.r, light.color.g, light.color.b)  },
       u_lightDir: { type: "v3", value: camera.lightDir },
@@ -79,13 +63,81 @@ function init() {
   } );
 
 
+  function setPBMaterial(material, roughness, fresnel, diffuseColor, transparency) {
+    var alpha = roughness * roughness;
+    material = pbShader.clone();
+    material.uniforms['u_lightColor'].value = new THREE.Vector3(0.90, 0.90, 0.90);
+    material.uniforms['u_lightPos'].value = new THREE.Vector3(-10.0, 10.0, 100.0);
+    material.uniforms['u_ambientColor'].value = new THREE.Vector3(34 / 255.0, 34 / 255.0, 34 / 255.0);
+    material.uniforms['u_roughness'].value = roughness;
+    material.uniforms['u_fresnel'].value = fresnel;
+    material.uniforms['u_alpha'].value = alpha;
+    material.uniforms['u_diffuseColor'].value = new THREE.Vector3(diffuseColor[0], diffuseColor[1], diffuseColor[2]);
+    if(transparency != 1.0){
+      material.transparent = true;
+    }
+    return material;
+  }
 
-  var loader = new THREE.JSONLoader();
 
-  loader.load('./objects/bunny.json', function(geometry, materials) {
-      var mesh = new THREE.Mesh(geometry, material);
-      scene.add(mesh);
-  });
+
+  for(var i = 1; i <= 10; i++) {
+    var geometry = new THREE.SphereGeometry( 8, 32, 32 );
+    var data = {map:null};
+    var material = setPBMaterial(data, i/15, 10, [0.9,0.2,0.5], 1);
+    var sphere = new THREE.Mesh( geometry, material );
+    sphere.position.x = (i-6) * 20;
+    scene.add( sphere );
+  }
+
+  for(var i = 1; i <= 10; i++) {
+    var geometry = new THREE.SphereGeometry( 8, 32, 32 );
+    var data = {map:null};
+    var material = setPBMaterial(data, 0.5, i*2, [0.9,0.2,0.5], 1);
+    var sphere = new THREE.Mesh( geometry, material );
+    sphere.position.x = (i-6) * 20;
+    sphere.position.y = 20;
+    scene.add( sphere );
+  }
+}
+
+
+
+
+function init() {
+
+  propertyGUI = new property();
+
+  initShader();
+
+  container = document.getElementById('container');
+  container.appendChild( stats.domElement );
+  document.body.appendChild(container);
+
+
+  camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 1500 );
+  camera.position.z = 170;
+  camera.position.x = 1;
+  camera.lightDir = new THREE.Vector3(-1,-1,-1);
+  camera.lightDir.normalize();
+
+  scene = new THREE.Scene();
+
+  light = new THREE.PointLight( 0xffffff, 1, 100 );
+  light.position.set( 0, 0, 10 );
+  scene.add(light);
+
+  cubeMapTex = initiCubeMap();
+
+  boxGeo = new THREE.BoxGeometry(1,1,1); 
+
+  loader();
+  // var loader = new THREE.JSONLoader();
+
+  // loader.load('./objects/bunny.json', function(geometry, materials) {
+  //     var mesh = new THREE.Mesh(geometry, material);
+  //     scene.add(mesh);
+  // });
 
 
   // var sphereMesh = new THREE.Mesh(new THREE.SphereGeometry( 1, 32, 32 ), material);
@@ -122,7 +174,7 @@ function animate() {
   render();
   stats.update();
 
-  material.uniforms['u_time'].value = (new Date() - startTime) * 0.001;
+  pbShader.uniforms['u_time'].value = (new Date() - startTime) * 0.001;
 }
 
 function render() {
@@ -236,7 +288,7 @@ function initiCubeMap() {
   });
 
   // build the skybox Mesh
-  skyboxMesh = new THREE.Mesh( new THREE.BoxGeometry( 200, 200, 200 ), material );
+  skyboxMesh = new THREE.Mesh( new THREE.BoxGeometry( 500, 500, 500 ), material );
   // add it to the scene
   scene.add( skyboxMesh );
 
