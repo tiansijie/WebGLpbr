@@ -241,6 +241,14 @@
 				 return m2 / (f * f) ;
 			 }
 
+
+			float GSchlick_Beckmann(float a, float NoL, float NoV) {
+				float k = a * sqrt(2.0/M_PI);
+				float GV = 1.0 / (NoV * (1.0-k) + k);
+				float GL = 1.0 / (NoL * (1.0-k) + k);
+				return GV*GL;
+			}
+
 			vec2 RandomSamples(float seed) {
 				float u = random(vec3(12.9898, 78.233, 151.7182), seed);
 				float v = random(vec3(63.7264, 10.873, 623.6736), seed);
@@ -256,19 +264,51 @@
 				H.x = SinTheta * cos( Phi );
 				H.y = SinTheta * sin( Phi );
 				H.z = CosTheta;
-				return H;
+
+				vec3 UpVector = abs(N.z) < 0.999? vec3(0.0,0.0,1.0) : vec3(1.0, 0.0, 0.0);
+				vec3 TangentX = normalize( cross(UpVector, N) );
+				vec3 TangentY = cross(N, TangentX);
+				return TangentX * H.x + TangentY * H.y + N * H.z;
 			}
 
+			vec2 frac(vec2 u, float diff) {
+				float x = u.x + diff;
+				float y = u.y + diff;
+				x = x - floor(x);
+				y = y - floor(y);
+				return vec2(x, y);
+			}
 
-			vec3 SpecularIBL( float Roughness, vec3 NL, vec3 V, float fresnel )
+			vec3 importanceSampleCosDir(vec2 u, vec3 N) {
+
+				vec3 UpVector = abs(N.z) < 0.999? vec3(0.0,0.0,1.0) : vec3(1.0, 0.0, 0.0);
+				vec3 TangentX = normalize( cross(UpVector, N) );
+				vec3 TangentY = cross(N, TangentX);
+
+				float u1 = u.x;
+				float u2 = u.y;
+
+				float r = sqrt(u1);
+				float phi = u2 * M_PI * 2.0;
+
+				vec3 L;
+				L = vec3(r* cos(phi), r * sin(phi), sqrt(max(0.0, 1.0-u1)));
+				L = normalize(TangentX * L.y + TangentY * L.x + N * L.z);
+				return L;
+			}
+
+			const int NumSamples = 32;
+			vec4 integrateDFGOnly( float Roughness, vec3 NL, vec3 V, float fresnel )
 			{
 				//L: viewLightDir
 				//H: halfVector
 				//V: viewNormal
 				//V: viewDir
 
+				vec4 acc = vec4(0.0);
+				float accWeight = 0.0;
 				vec3 SpecularLighting = vec3(0.0);
-				const int NumSamples = 32;
+
 				for( int i = 0; i < NumSamples; i++ )
 				{
 					vec2 Xi = RandomSamples( u_time + float(i) );
@@ -279,25 +319,51 @@
 					float NoH = max( dot( NL, H ), 0.0 );
 					float VoH = max( dot( V, H ), 0.0 );
 					float HoL = max( dot( H, L ), 0.0);
+					float g = GSchlick_Beckmann(Roughness, NoL, NoV);
 
-
-					if( NoL > 0.0 )
+					// specular GGX DFG preIntegration
+					if( NoL > 0.0 && g > 0.0 )
 					{
-						vec3 SampleColor = textureCube (u_tCube, L).xyz;
-
-						vec3 fresnel_fn = F_Schlick(H, fresnel, HoL);
-						/*Put M_PI/4.0 in to NDF functions*/
-						//float ndf_fn = N(Roughness, NL, H, NoH);
-						float ndf_fn = V_SmithGGXCorrelated(NoV, NoL, u_roughness);
-						/*Put /(NoL*NoV) in G funtion*/
-						//float g_fn = G(Roughness, L, V, H, NL, NoL, NoV);
-						float g_fn = D_GGX(NoH, u_roughness);
-
-
-						SpecularLighting += fresnel_fn * ndf_fn * g_fn * SampleColor;
+						float GVis = g * HoL / (NoH * NoV);
+						float Fc = pow(1.0 - HoL, 5.0);
+						acc.x += (1.0-Fc) * GVis;
+						acc.y += Fc * GVis;
 					}
+
+					Xi = frac(Xi, 0.5);
+					float pdf;
+					L = importanceSampleCosDir(Xi, NL);
+					NoL = max( dot(NL, L), 0.0);
+					pdf = NoL * 1.0/M_PI;
+					if(NoL > 0.0) {
+						float LoH = max(dot(L, normalize(V + L)), 0.0);
+						acc.z += Fr_DisneyDiffuse(NoV, NoL, HoL, sqrt(Roughness));
+					}
+					accWeight += 1.0;
 				}
-				return SpecularLighting / float(NumSamples);
+				return acc / (1.0 / accWeight);
+			}
+
+
+			vec3 integrateCubeLDOnly(vec3 V, vec3 N, float roughness) {
+				// const int NumSamples = 32;
+				// vec3 accBrdf = vec3(0.0);
+				// float accBrdfWeight = 0.0;
+				// for (int i = 0; i < NumSamples; ++i) {
+				// 	vec2 Xi = RandomSamples( u_time + float(i) );
+				// 	vec3 H = ImportanceSampleGGX( Xi, roughness, N );
+				// 	vec3 L = 2.0 * dot( V, H ) * H - V;
+				// 	float NoL = dot(N,L);
+				// 	if(NoL > 0.0) {
+				// 		float NoH = max(dot(N, H), 0.0);
+				// 		float LoH = max(dot(L, H), 0.0);
+				// 		float pdf = D_GGX(NoH, roughness) / M_PI * NoH / (4.0*LoH);
+				// 		float omegaS = 1.0 / (float(NumSamples) * pdf);
+				// 		float omegaP = 4.0 * M_PI / (6.0 * width * width);
+				// 		float mipLevel = clamp(0.5 * log2(omegaS/omegaP), )
+				// 	}
+				// }
+				return vec3(0.0);
 			}
 
 
