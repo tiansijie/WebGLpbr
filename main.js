@@ -84,7 +84,7 @@ function loader() {
   for(var i = 1; i <= 10; i++) {
     var geometry = new THREE.SphereGeometry( 8, 32, 32 );
     var data = {map:null};
-    var material = setPBMaterial(data, i/10, 3.0, [0.9,0.2,0.2], 1);
+    var material = setPBMaterial(data, i/10, 1.5, [0.5,0.5,0.5], 1);
     var sphere = new THREE.Mesh( geometry, material );
     sphere.position.x = (i-6) * 20;
     scene.add( sphere );

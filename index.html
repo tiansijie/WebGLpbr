@@ -292,8 +292,7 @@
 			}
 
 			const int NumSamples = 32;
-			vec4 integrateDFGOnly( float roughness, vec3 N, vec3 V )
-			{
+			vec4 integrateDFGOnly( float roughness, vec3 N, vec3 V ) {
 				//L: viewLightDir
 				//H: halfVector
 				//V: viewNormal
@@ -327,10 +326,10 @@
 					float pdf;
 					L = importanceSampleCosDir(Xi, N);
 					NoL = max( dot(N, L), 0.0);
-					pdf = NoL * 1.0/M_PI;
+					//pdf = NoL * 1.0/M_PI;
 					if(NoL > 0.0) {
 						float LoH = max(dot(L, normalize(V + L)), 0.0);
-						acc.z += Fr_DisneyDiffuse(NoV, NoL, HoL, sqrt(roughness));
+						acc.z += Fr_DisneyDiffuse(NoV, NoL, LoH, sqrt(roughness));
 					}
 					accWeight += 1.0;
 				}
@@ -339,25 +338,41 @@
 
 
 			vec3 integrateCubeLDOnly(vec3 V, vec3 N, float roughness) {
-				// const int NumSamples = 32;
-				// vec3 accBrdf = vec3(0.0);
-				// float accBrdfWeight = 0.0;
-				// float width = 5.0;
-				// for (int i = 0; i < NumSamples; ++i) {
-				// 	vec2 Xi = RandomSamples( u_time + float(i) );
-				// 	vec3 H = ImportanceSampleGGX( Xi, roughness, N );
-				// 	vec3 L = 2.0 * dot( V, H ) * H - V;
-				// 	float NoL = dot(N,L);
-				// 	if(NoL > 0.0) {
-				// 		float NoH = max(dot(N, H), 0.0);
-				// 		float LoH = max(dot(L, H), 0.0);
-				// 		float pdf = D_GGX(NoH, roughness) / M_PI * NoH / (4.0*LoH);
-				// 		float omegaS = 1.0 / (float(NumSamples) * pdf);
-				// 		float omegaP = 4.0 * M_PI / (6.0 * width * width);
-				// 		float mipLevel = clamp(0.5 * log2(omegaS/omegaP),  0.0 )
-				// 	}
-				// }
-				return vec3(0.0);
+				const int NumSamples = 16;
+				vec3 accBrdf = vec3(0.0);
+				float accBrdfWeight = 0.0;
+				float width = 25.0;
+				for (int i = 0; i < NumSamples; ++i) {
+					vec2 Xi = RandomSamples( u_time + float(i) );
+					vec3 H = ImportanceSampleGGX( Xi, roughness, N );
+					vec3 L = 2.0 * dot( V, H ) * H - V;
+					float NoL = dot(N,L);
+					if(NoL > 0.0) {
+						float NoH = max(dot(N, H), 0.0);
+						float LoH = max(dot(L, H), 0.0);
+						float pdf = D_GGX(NoH, roughness) / M_PI * NoH / (4.0*LoH);
+						float omegaS = 1.0 / (float(NumSamples) * pdf);
+						float omegaP = 4.0 * M_PI / (6.0 * width * width);
+						float mipLevel = clamp(0.5 * log2(omegaS/omegaP),  0.0,  256.0 );
+						accBrdf += textureCube(u_tCube, L, mipLevel).xyz * NoL;
+						accBrdfWeight += NoL;
+				 	}
+				}
+				return accBrdf * (1.0 / accBrdfWeight);
+			}
+
+
+			vec3 integrateDiffuseCube(vec3 N) {
+				vec3 accBrdf = vec3(0.0);
+				for(int i = 0; i < NumSamples; ++i) {
+					vec2 Xi = RandomSamples( u_time + float(i) );
+					vec3 L = importanceSampleCosDir(Xi, N);
+					float NoL = max( dot(N, L), 0.0);
+					if( NoL > 0.0) {
+						accBrdf += textureCube(u_tCube, L).rgb;
+					}
+				}
+				return accBrdf * (1.0 / float(NumSamples));
 			}
 
 
@@ -402,37 +417,30 @@
 				vec3 viewNormal = normalize(vNormal.xyz);
 				vec3 viewDir = normalize(-vViewPosition);
 				vec3 halfVec = normalize(viewLightDir + viewDir);
-				float fresnel = pow((1.0 - u_fresnel) / (1.0 + u_fresnel), 2.0);
-
-				//float diffuse =  fresnel / M_PI * (1.0 + pow(fd90(1.0-max(dot(lightDir, normal), 0.0), u_alpha), 5.0)) * ( 1.0 + pow(fd90(1.0-max(dot(normal, viewDir), 0.0), u_alpha), 5.0));
 
 				float NoV = max( dot( viewNormal, viewDir ), 0.0 ) + 1e-5;
 				float NoL = max( dot( viewNormal, viewLightDir ), 0.0 );
 				float LoH = max( dot( viewLightDir, halfVec ), 0.0 );
 				float NoH = max( dot( viewNormal, halfVec), 0.0);
 
-				float diffuse = Fr_DisneyDiffuse(NoV, NoL, LoH, pow(u_roughness, 4.0)) / M_PI;
+				//float diffuse = Fr_DisneyDiffuse(NoV, NoL, LoH, pow(u_roughness, 4.0)) / M_PI;
 
 
 				//float fresnel_fn = F(fresnel, viewLightDir, halfVec);
 
 				vec3 fTerm = F_Schlick(vec3(0.16 * pow(u_fresnel, 2.0)), u_fresnel, LoH);
-				// float Vis = V_SmithGGXCorrelated(NoV, NoL, u_roughness);
-				// float dTerm = D_GGX(NoH, u_roughness);
+				float Vis = V_SmithGGXCorrelated(NoV, NoL, u_roughness);
+				float dTerm = D_GGX(NoH, u_roughness);
 
 
 				//vec3 specularColor = SpecularIBL(u_alpha, viewNormal, viewDir, fresnel) / M_PI;
-				//vec3 specularColor = (fTerm * Vis * dTerm) / M_PI;//vec3(1.0);
-				vec3 DFGTerm = integrateDFGOnly(u_roughness, viewNormal, viewDir).xyz;
-				vec3 specularColor = DFGTerm.z * (u_fresnel*DFGTerm.x + DFGTerm.y) * fTerm;//textureCube(u_tCube, viewNormal).xyz;
+				vec3 specularHighColor = (fTerm * Vis * dTerm) / M_PI;//vec3(1.0);
+				vec3 DFG = integrateDFGOnly(u_roughness, viewNormal, viewDir).xyz;
+				vec3 cubeLD = integrateCubeLDOnly(viewDir, viewNormal, u_roughness);
+				vec3 specularColor = (u_fresnel*DFG.x + DFG.y) * cubeLD ;
+				vec3 diffuseCubeLD = integrateDiffuseCube(viewNormal);
 
-
-				vec3 brdf = (diffuse* u_diffuseColor * 2.0 + specularColor * 0.2) * NoL;
-				// vec3 specColor = specularColor;/// + dirSpecular;
-				// vec3 diffuseColor = u_diffuseColor * diffuse * u_lightColor;// + dirDiffuse;
-
-				// gl_FragColor = vec4( diffuseColor + specColor + u_ambientColor * u_diffuseColor, 1.0);
-
+				vec3 brdf = (DFG.z * u_diffuseColor * diffuseCubeLD * 0.5 + specularColor * 0.5 + specularHighColor * 0.5) * NoL;
 				gl_FragColor = vec4(brdf * u_lightColor + u_ambientColor * u_diffuseColor, 1.0);
 			}
 		</script>
