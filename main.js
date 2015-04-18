@@ -129,7 +129,7 @@ function init() {
 
   cubeMapTex = initiCubeMap();
 
-  boxGeo = new THREE.BoxGeometry(1,1,1); 
+  boxGeo = new THREE.BoxGeometry(1,1,1);
 
   loader();
   // var loader = new THREE.JSONLoader();
