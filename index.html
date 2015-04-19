@@ -293,11 +293,6 @@
 
 			const int NumSamples = 32;
 			vec4 integrateDFGOnly( float roughness, vec3 N, vec3 V ) {
-				//L: viewLightDir
-				//H: halfVector
-				//V: viewNormal
-				//V: viewDir
-
 				vec4 acc = vec4(0.0);
 				float accWeight = 0.0;
 				vec3 SpecularLighting = vec3(0.0);
@@ -423,7 +418,7 @@
 				float LoH = max( dot( viewLightDir, halfVec ), 0.0 );
 				float NoH = max( dot( viewNormal, halfVec), 0.0);
 
-				//float diffuse = Fr_DisneyDiffuse(NoV, NoL, LoH, pow(u_roughness, 4.0)) / M_PI;
+				float diffuse = Fr_DisneyDiffuse(NoV, NoL, LoH, pow(u_roughness, 4.0)) / M_PI;
 
 
 				//float fresnel_fn = F(fresnel, viewLightDir, halfVec);
@@ -439,8 +434,9 @@
 				vec3 cubeLD = integrateCubeLDOnly(viewDir, viewNormal, u_roughness);
 				vec3 specularColor = (u_fresnel*DFG.x + DFG.y) * cubeLD ;
 				vec3 diffuseCubeLD = integrateDiffuseCube(viewNormal);
+				vec3 IBL = specularColor + diffuseCubeLD * DFG.z;
 
-				vec3 brdf = (DFG.z * u_diffuseColor * diffuseCubeLD * 0.5 + specularColor * 0.5 + specularHighColor * 0.5) * NoL;
+				vec3 brdf = (diffuse * u_diffuseColor * 0.5 + specularHighColor * 0.5) * IBL * NoL;
 				gl_FragColor = vec4(brdf * u_lightColor + u_ambientColor * u_diffuseColor, 1.0);
 			}
 		</script>
