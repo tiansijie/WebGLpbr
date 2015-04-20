@@ -283,6 +283,7 @@ function initiCubeMap() {
 
   var shader = THREE.ShaderLib["cube"];
   shader.uniforms['tCube'].value = textureCube;   // textureCube has been init before
+
   var material = new THREE.ShaderMaterial({
     fragmentShader    : shader.fragmentShader,
     vertexShader  : shader.vertexShader,

@@ -42,13 +42,15 @@
 
 	varying vec3 vViewPosition;
 	varying vec3 vNormal;
+	varying vec3 wNormal;
 
 	void main()	{
 
 
 		vec4 mvPosition = modelViewMatrix * vec4(position,1.0);
 		vViewPosition = (mvPosition).xyz / mvPosition.w;
-		vNormal = normalMatrix * normal.xyz;
+		vNormal = normalMatrix * normal;
+		wNormal = ( vec4(normal, 1.0) ).xyz;
 		//vUv = uv;
 		gl_Position = projectionMatrix * mvPosition;
 	}
@@ -74,7 +76,7 @@
 
 	varying vec3 vViewPosition;
 	varying vec3 vNormal;
-	varying vec2 vUv;
+	varying vec3 wNormal;
 
 
 	#define M_PI 3.1415926535897932384626433832795
@@ -197,10 +199,6 @@
 	}
 
 	vec2 RandomSamples(float seed) {
-
-		// float u = rnd(vec2(sin(seed), cos(seed)));
-		// float v = rnd(vec2(cos(seed), sin(seed)));
-		// return vec2(u, v);
 		float u = random(vec3(12.9898, 78.233, 151.7182), seed);
 		float v = random(vec3(63.7264, 10.873, 623.6736), seed);
 		return vec2(u, v);
@@ -330,7 +328,7 @@
 
 	vec3 ApproximateSpecularIBL( float fresnel , float Roughness, vec3 N, vec3 V ) {
 		float NoV = saturate( dot( N, V ) );
-		vec3 R = 2.0 * dot( V, N ) * N - V;
+		vec3 R = 2.0 *  dot( N, V ) * N - V;
 		vec3 PrefilteredColor = PrefilterEnvMap( Roughness, R );
 		vec2 EnvBRDF = IntegrateBRDF( Roughness, NoV );
 		return PrefilteredColor * ( fresnel * EnvBRDF.x + EnvBRDF.y );
@@ -392,6 +390,7 @@
 
 		vec3 viewNormal = normalize(vNormal.xyz);
 		vec3 viewDir = normalize(-vViewPosition);
+		vec3 worldNormal = normalize(wNormal);
 
 		// vec3 halfVec = normalize(viewDir + viewLightDir);
 		// float NoV = max( dot( viewNormal, viewDir ), 0.0 ) + 1e-5;
@@ -403,7 +402,7 @@
 
 		vec3 specularIBL = ApproximateSpecularIBL(u_fresnel, u_roughness, viewNormal, viewDir);
 
-		gl_FragColor = vec4( specularIBL * 0.2 + u_ambientColor, 1.0);
+		gl_FragColor = vec4( specularIBL * 0.4 + u_ambientColor, 1.0);
 	}
 	</script>
 	<script type="text/javascript" src="./main2.js"></script>
