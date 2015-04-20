@@ -32,16 +32,14 @@ stats.domElement.style.position = 'absolute';
 stats.domElement.style.left = '0px';
 stats.domElement.style.top = '0px';
 
+var currentTime = new Date();
+var allPbShaders = [];
+
 init();
 animate();
 
-
-
-
-
-
-
 var pbShader;
+
 function loader() {
 
   pbShader = new THREE.ShaderMaterial( {
@@ -49,7 +47,6 @@ function loader() {
       u_lightColor: { type: "v3", value: new THREE.Vector3(light.color.r, light.color.g, light.color.b)  },
       u_lightDir: { type: "v3", value: camera.lightDir },
       u_lightPos: { type: "v3", value: light.position},
-      u_viewPos: {type: "v3", value: camera.position },
       u_diffuseColor: {type: "v3", value: new THREE.Vector3(0.9, 0.9, 0.9)},
       u_ambientColor: {type: "v3", value: new THREE.Vector3(0.1, 0.1, 0.1)},
       u_roughness: {type: "f", value: propertyGUI.roughness },
@@ -61,6 +58,7 @@ function loader() {
     vertexShader: document.getElementById( 'vertexShader' ).textContent,
     fragmentShader: currentFragShader,
   } );
+
 
 
   function setPBMaterial(material, roughness, fresnel, diffuseColor, transparency) {
@@ -76,6 +74,7 @@ function loader() {
     if(transparency != 1.0){
       material.transparent = true;
     }
+    allPbShaders.push(material);
     return material;
   }
 
@@ -84,7 +83,7 @@ function loader() {
   for(var i = 1; i <= 10; i++) {
     var geometry = new THREE.SphereGeometry( 8, 32, 32 );
     var data = {map:null};
-    var material = setPBMaterial(data, i/11, 1.5, [0.5,0.5,0.5], 1);
+    var material = setPBMaterial(data, i/10, 2.0, [0.5,0.5,0.5], 1);
     var sphere = new THREE.Mesh( geometry, material );
     sphere.position.x = (i-6) * 20;
     scene.add( sphere );
@@ -143,7 +142,7 @@ function init() {
   // var sphereMesh = new THREE.Mesh(new THREE.SphereGeometry( 1, 32, 32 ), material);
   // scene.add(sphereMesh);
 
-  renderer = new THREE.WebGLRenderer();
+  renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setClearColor( 0xffffff, 1 );
   renderer.setSize( window.innerWidth, window.innerHeight );
   container.appendChild( renderer.domElement );
@@ -174,7 +173,9 @@ function animate() {
   render();
   stats.update();
 
-  pbShader.uniforms['u_time'].value = (new Date() - startTime) * 0.001;
+  for(var i = 0; i < allPbShaders.length; i++) {
+    allPbShaders[i].uniforms['u_time'].value = (new Date() - startTime) * 0.001;
+  }
 }
 
 function render() {
@@ -237,7 +238,10 @@ window.onload = function() {
   var cubeMapController = datGui.add(propertyGUI, 'Cube_Map_Name', ['chapel', 'beach', 'church']);
   cubeMapController.onFinishChange(function(value) {
     var cubeMapTex = initiCubeMap();
-    material.uniforms.u_tCube.value = cubeMapTex;
+    for(var i = 0; i < allPbShaders.length; ++i) {
+      allPbShaders[i].uniforms.u_tCube.value = cubeMapTex;
+    }
+
   });
 }
 
