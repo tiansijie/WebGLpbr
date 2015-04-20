@@ -81,11 +81,11 @@ function loader() {
 
 
   for(var i = 1; i <= 10; i++) {
-    var geometry = new THREE.SphereGeometry( 8, 32, 32 );
+    var geometry = new THREE.SphereGeometry( 15, 32, 32 );
     var data = {map:null};
     var material = setPBMaterial(data, i/10, 2.0, [0.5,0.5,0.5], 1);
     var sphere = new THREE.Mesh( geometry, material );
-    sphere.position.x = (i-6) * 20;
+    sphere.position.x = (i-6) * 33;
     scene.add( sphere );
   }
 
@@ -115,7 +115,7 @@ function init() {
 
 
   camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 1500 );
-  camera.position.z = 170;
+  camera.position.z = 270;
   camera.position.x = 1;
   camera.lightDir = new THREE.Vector3(-1,-1,-1);
   camera.lightDir.normalize();
@@ -293,7 +293,7 @@ function initiCubeMap() {
   });
 
   // build the skybox Mesh
-  skyboxMesh = new THREE.Mesh( new THREE.BoxGeometry( 500, 500, 500 ), material );
+  skyboxMesh = new THREE.Mesh( new THREE.BoxGeometry( 1000, 1000, 1000 ), material );
   // add it to the scene
   scene.add( skyboxMesh );
 

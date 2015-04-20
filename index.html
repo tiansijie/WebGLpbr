@@ -326,7 +326,7 @@
 	}
 
 
-	vec3 ApproximateSpecularIBL( float fresnel , float Roughness, vec3 N, vec3 V ) {
+	vec3 ApproximateSpecularIBL( float fresnel , float Roughness, vec3 N, vec3 V, vec3 wN ) {
 		float NoV = saturate( dot( N, V ) );
 		vec3 R = 2.0 *  dot( N, V ) * N - V;
 		vec3 PrefilteredColor = PrefilterEnvMap( Roughness, R );
@@ -400,9 +400,9 @@
 
 		//float diffuse = Fr_DisneyDiffuse(NoV, NoL, LoH, pow(u_roughness + 1.0, 2.0)/8.0) / M_PI ;
 
-		vec3 specularIBL = ApproximateSpecularIBL(u_fresnel, u_roughness, viewNormal, viewDir);
+		vec3 specularIBL = ApproximateSpecularIBL(u_fresnel, u_roughness, viewNormal, viewDir, worldNormal);
 
-		gl_FragColor = vec4( specularIBL * 0.4 + u_ambientColor, 1.0);
+		gl_FragColor = vec4( specularIBL * 0.3 + u_ambientColor, 1.0);
 	}
 	</script>
 	<script type="text/javascript" src="./main2.js"></script>
