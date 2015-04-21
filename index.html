@@ -72,6 +72,7 @@
 	uniform vec3 u_ambientColor;
 	uniform samplerCube u_tCube;
 	uniform float u_time;
+	uniform float u_VDC[512];
 
 
 	varying vec3 vViewPosition;
@@ -176,6 +177,8 @@
 
 
 	<script id="GSchlick_Beckmann" type="x-shader/x-fragment">
+
+
 	float G(float a, vec3 l, vec3 v, vec3 h, vec3 n, float NoL, float NoV) {
 		float k = a * sqrt(2.0/M_PI);
 		float GV = 1.0 / (NoV * (1.0-k) + k);
@@ -186,6 +189,7 @@
 
 
 	<script id="fragmentShader_main" type="x-shader/x-fragment">
+
 	float random(vec3 scale, float seed) {
 		return fract(sin(dot(gl_FragCoord.xyz + seed, scale)) * 43758.5453 + seed);
 	}
@@ -204,6 +208,10 @@
 		return vec2(u, v);
 	}
 
+	vec2 Hammersley(int i, int samples) {
+		return vec2(float(i) / float(samples), u_VDC[5]);
+	}
+
 	vec3 ImportanceSampleGGX( vec2 Xi, float Roughness, vec3 N ) {
 		float a = Roughness * Roughness;
 		float Phi = 2.0 * M_PI * Xi.x;
@@ -220,19 +228,14 @@
 		return TangentX * H.x + TangentY * H.y + N * H.z;
 	}
 
-
+	const int NumSamples = 256;
 	vec3 SpecularIBL( float Roughness, vec3 NL, vec3 V, float fresnel )
 	{
-		//L: viewLightDir
-		//H: halfVector
-		//V: viewNormal
-		//V: viewDir
-
 		vec3 SpecularLighting = vec3(0.0);
-		const int NumSamples = 64;
+
 		for( int i = 0; i < NumSamples; i++ )
 		{
-			vec2 Xi = RandomSamples( u_time + float(i) );
+			vec2 Xi = vec2(float(i) / float(NumSamples), u_VDC[i]);
 			vec3 H = ImportanceSampleGGX( Xi, Roughness, NL );
 			vec3 L = 2.0 * dot( V, H ) * H - V;
 			float NoV = max( dot( NL, V ), 0.0 );
@@ -258,17 +261,14 @@
 	}
 
 
-	vec3 PrefilterEnvMap( float Roughness, vec3 R )
-	{
+	vec3 PrefilterEnvMap( float Roughness, vec3 R)	{
 		vec3 N = R;
 		vec3 V = R;
 		vec3 PrefilteredColor = vec3(0.0);
 		float TotalWeight = 0.0;
-		const int NumSamples = 64;
-
 		for( int i = 0; i < NumSamples; i++ )
 		{
-			vec2 Xi = RandomSamples( u_time + float(i) );
+			vec2 Xi = vec2(float(i) / float(NumSamples), u_VDC[i]);
 			vec3 H = ImportanceSampleGGX( Xi, Roughness, N );
 			vec3 L = 2.0 * dot( V, H ) * H - V;
 
@@ -292,18 +292,16 @@
 	}
 
 
-	vec2 IntegrateBRDF( float Roughness, float NoV)
-	{
+	vec2 IntegrateBRDF( float Roughness, float NoV)	{
 		vec3 V;
 		V.x = sqrt( 1.0 - NoV * NoV ); // sin
 		V.y = 0.0;
 		V.z = NoV; // cos
 		float A = 0.0;
 		float B = 0.0;
-		const int NumSamples = 64;
 		for( int i = 0; i < NumSamples; i++ )
 		{
-			vec2 Xi = RandomSamples( u_time + float(i) );
+			vec2 Xi = vec2(float(i) / float(NumSamples), u_VDC[i]);//Hammersley( i, NumSamples );
 			vec3 H = ImportanceSampleGGX( Xi, Roughness, V );
 			vec3 L = 2.0 * dot( V, H ) * H - V;
 			float NoL = saturate( L.z );
@@ -329,7 +327,7 @@
 	vec3 ApproximateSpecularIBL( float fresnel , float Roughness, vec3 N, vec3 V, vec3 wN ) {
 		float NoV = saturate( dot( N, V ) );
 		vec3 R = 2.0 *  dot( N, V ) * N - V;
-		vec3 PrefilteredColor = PrefilterEnvMap( Roughness, R );
+		vec3 PrefilteredColor = PrefilterEnvMap( Roughness, R);
 		vec2 EnvBRDF = IntegrateBRDF( Roughness, NoV );
 		return PrefilteredColor * ( fresnel * EnvBRDF.x + EnvBRDF.y );
 	}
@@ -364,8 +362,7 @@
 		return x * (1.0-a) + y * a;
 	}
 
-	vec3 F_Schlick (vec3 f0, float f90, float u )
-	{
+	vec3 F_Schlick (vec3 f0, float f90, float u ) {
 		return f0 + vec3(f90 - f0) * pow (1.0 - u , 5.0);
 	}
 
@@ -384,26 +381,26 @@
 		//		viewMatrix
 		//		cameraPosition
 
-		// vec4 viewLightPos = viewMatrix * vec4( u_lightPos, 1.0 );
-		// vec3 viewLightDir = viewLightPos.xyz - vViewPosition.xyz;
-		// viewLightDir = normalize(viewLightDir);
+		vec4 viewLightPos = viewMatrix * vec4( u_lightPos, 1.0 );
+		vec3 viewLightDir = viewLightPos.xyz - vViewPosition.xyz;
+		viewLightDir = normalize(viewLightDir);
 
 		vec3 viewNormal = normalize(vNormal.xyz);
 		vec3 viewDir = normalize(-vViewPosition);
 		vec3 worldNormal = normalize(wNormal);
 
-		// vec3 halfVec = normalize(viewDir + viewLightDir);
-		// float NoV = max( dot( viewNormal, viewDir ), 0.0 ) + 1e-5;
-		// float NoL = max( dot( viewNormal, viewLightDir ), 0.0 );
-		// float LoH = max( dot( viewLightDir, halfVec ), 0.0 );
-		// float NoH = max( dot( viewNormal, halfVec), 0.0);
+		vec3 halfVec = normalize(viewDir + viewLightDir);
+		float NoV = max( dot( viewNormal, viewDir ), 0.0 ) + 1e-5;
+		float NoL = max( dot( viewNormal, viewLightDir ), 0.0 );
+		float LoH = max( dot( viewLightDir, halfVec ), 0.0 );
+		float NoH = max( dot( viewNormal, halfVec), 0.0);
 
-		//float diffuse = Fr_DisneyDiffuse(NoV, NoL, LoH, pow(u_roughness + 1.0, 2.0)/8.0) / M_PI ;
-
+		float diffuse = Fr_DisneyDiffuse(NoV, NoL, LoH, pow(u_roughness + 1.0, 2.0)/8.0) / M_PI ;
 		vec3 specularIBL = ApproximateSpecularIBL(u_fresnel, u_roughness, viewNormal, viewDir, worldNormal);
 
-		gl_FragColor = vec4( specularIBL * 0.3 + u_ambientColor, 1.0);
+		gl_FragColor = vec4( specularIBL * 0.5 + diffuse * 0.5 + u_ambientColor, 1.0);
 	}
+
 	</script>
 	<script type="text/javascript" src="./main2.js"></script>
 
