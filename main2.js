@@ -53,7 +53,6 @@ function loader() {
       u_fresnel: {type: "f", value: propertyGUI.fresnel },
       u_alpha: {type: "f", value: propertyGUI.roughness * propertyGUI.roughness },
       u_tCube: {type: "t", value: cubeMapTex },
-      u_time: {type: "f", value: 0.0},
       u_VDC: {type:"fv1", value: [0.0]}
     },
     vertexShader: document.getElementById( 'vertexShader' ).textContent,
@@ -83,24 +82,15 @@ function loader() {
 
 
 
-  for(var i = 1; i <= 10; i++) {
-    var geometry = new THREE.SphereGeometry( 15, 32, 32 );
+  for(var i = 0; i <= 10; i++) {
+    var geometry = new THREE.SphereGeometry( 23, 32, 32 );
     var data = {map:null};
-    var material = setPBMaterial(data, i/10, 2.0, [0.5,0.5,0.5], 1);
+    var material = setPBMaterial(data, i/10, 0.7, [0.5,0.5,0.5], 1);
     var sphere = new THREE.Mesh( geometry, material );
-    sphere.position.x = (i-6) * 33;
+    sphere.position.x = (i-6) * 50;
     scene.add( sphere );
   }
 
-  // for(var i = 1; i <= 10; i++) {
-  //   var geometry = new THREE.SphereGeometry( 8, 32, 32 );
-  //   var data = {map:null};
-  //   var material = setPBMaterial(data, 0.5, i*2, [0.9,0.2,0.5], 1);
-  //   var sphere = new THREE.Mesh( geometry, material );
-  //   sphere.position.x = (i-6) * 20;
-  //   sphere.position.y = 20;
-  //   scene.add( sphere );
-  // }
 }
 
 
@@ -117,9 +107,9 @@ function init() {
   document.body.appendChild(container);
 
 
-  camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 1500 );
+  camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 3500 );
   camera.position.z = 270;
-  camera.position.x = 1;
+  camera.position.x = 5;
   camera.lightDir = new THREE.Vector3(-1,-1,-1);
   camera.lightDir.normalize();
 
@@ -134,16 +124,6 @@ function init() {
   boxGeo = new THREE.BoxGeometry(1,1,1);
 
   loader();
-  // var loader = new THREE.JSONLoader();
-
-  // loader.load('./objects/bunny.json', function(geometry, materials) {
-  //     var mesh = new THREE.Mesh(geometry, material);
-  //     scene.add(mesh);
-  // });
-
-
-  // var sphereMesh = new THREE.Mesh(new THREE.SphereGeometry( 1, 32, 32 ), material);
-  // scene.add(sphereMesh);
 
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setClearColor( 0xffffff, 1 );
@@ -175,10 +155,6 @@ function animate() {
 
   render();
   stats.update();
-
-  for(var i = 0; i < allPbShaders.length; i++) {
-    allPbShaders[i].uniforms['u_time'].value = (new Date() - startTime) * 0.001;
-  }
 }
 
 function render() {
@@ -296,7 +272,7 @@ function initiCubeMap() {
   });
 
   // build the skybox Mesh
-  skyboxMesh = new THREE.Mesh( new THREE.BoxGeometry( 1000, 1000, 1000 ), material );
+  skyboxMesh = new THREE.Mesh( new THREE.BoxGeometry( 2000, 2000, 2000 ), material );
   // add it to the scene
   scene.add( skyboxMesh );
 
