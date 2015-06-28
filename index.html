@@ -70,7 +70,7 @@
 	uniform float u_alpha;
 	uniform vec3 u_ambientColor;
 	uniform samplerCube u_tCube;
-	uniform float u_VDC[512];
+	uniform float u_VDC[256];
 
 
 	varying vec3 vViewPosition;
@@ -207,6 +207,26 @@
 		return vec2(u, v);
 	}
 
+
+	float D_GGX ( float NdotH , float m ) {
+		// Divide by PI is apply later
+		float m2 = m * m ;
+		float f = ( NdotH * m2 - NdotH ) * NdotH + 1.0;
+		return m2 / (f * f) ;
+	}
+
+
+	float V_SmithGGXCorrelated ( float NdotL , float NdotV , float alphaG ) {
+		// This is the optimize version
+		float alphaG2 = alphaG * alphaG ;
+		// Caution : the " NdotL *" and " NdotV *" are explicitely inversed , this is not a mistake .
+		float Lambda_GGXV = NdotL * sqrt (( - NdotV * alphaG2 + NdotV ) * NdotV + alphaG2 );
+		float Lambda_GGXL = NdotV * sqrt (( - NdotL * alphaG2 + NdotL ) * NdotL + alphaG2 );
+
+		return 0.5 / ( Lambda_GGXV + Lambda_GGXL );
+	}
+
+
 	vec3 ImportanceSampleGGX( vec2 Xi, float Roughness, vec3 N ) {
 		float a = Roughness * Roughness;
 		float Phi = 2.0 * M_PI * Xi.x;
@@ -223,13 +243,14 @@
 		return TangentX * H.x + TangentY * H.y + N * H.z;
 	}
 
-	const int NumSamples = 128;
+	const int NumSamples = 64;
 
 	vec3 PrefilterEnvMap( float Roughness, vec3 R)	{
 		vec3 N = R;
 		vec3 V = R;
 		vec3 PrefilteredColor = vec3(0.0);
 		float TotalWeight = 0.0;
+		float width = 128.0;
 		for( int i = 0; i < NumSamples; i++ )
 		{
 			vec2 Xi = vec2(float(i) / float(NumSamples), u_VDC[i]);
@@ -242,7 +263,15 @@
 			{
 				L = vec3(vec4(L, 0.0) * viewMatrix).xyz;
 				L.x = -L.x;
-				PrefilteredColor += textureCube (u_tCube, L, Roughness).xyz * NoL;
+
+				Roughness += 1e-5;
+				float NdotH = saturate ( dot (N , H) );
+				float LdotH = saturate ( dot (L , H) );
+				float pdf = (D_GGX ( NdotH , Roughness ) / M_PI) * NdotH /(4.0 * LdotH);
+				float omegaS = 1.0 / ( float(NumSamples) * pdf );
+				float omegaP = 4.0 * M_PI / (6.0 * width * width) ;
+				float mipLevel = clamp (0.5 * log2 ( omegaS / omegaP ) , 0.0, 8.0 );
+				PrefilteredColor += textureCube (u_tCube, L, mipLevel).xyz;
 				TotalWeight += NoL;
 			}
 		}
@@ -338,7 +367,7 @@
 		float diffuse = 0.0;//Fr_DisneyDiffuse(NoV, NoL, LoH, pow(u_roughness + 1.0, 2.0)/8.0) / M_PI ;
 		vec3 specularIBL = ApproximateSpecularIBL(u_fresnel, u_roughness, viewNormal, viewDir, f90);
 
-		gl_FragColor = vec4( specularIBL + diffuse + u_ambientColor, 1.0);
+		gl_FragColor = vec4( specularIBL + diffuse * u_diffuseColor + u_ambientColor, 1.0);
 	}
 
 	</script>
